@@ -1,13 +1,8 @@
 #include "timerUtils.h"
 
-void _TimerStart(timeval* tv_start)
+void _TimerLap(timeval* tv)
 {
-    gettimeofday(tv_start, NULL);
-}
-
-void _TimerStop(timeval* tv_stop)
-{
-    gettimeofday(tv_stop, NULL);
+    gettimeofday(tv, NULL);
 }
 
 microsecond_t TimerInterval_MICRO(timeval* tv_start, timeval* tv_stop)

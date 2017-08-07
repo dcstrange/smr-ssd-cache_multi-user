@@ -1,8 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "shmlib.h"
-#include "ssd-cache.h"
-#include "ssd_buf_table.h"
+#include "cache.h"
+#include "hashtable_utils.h"
 #include "global.h"
 
 extern void _LOCK(pthread_mutex_t* lock);
@@ -61,17 +61,13 @@ int HashTab_Init()
 //    return stat;
 }
 
-unsigned long HashTab_GetHashCode(SSDBufferTag *ssd_buf_tag)
+unsigned long HashTab_GetHashCode(SSDBufTag *ssd_buf_tag)
 {
-    if(BandOrBlock == 1)
-    {
-        SSD_BUFFER_SIZE = BNDSZ;
-    }
     unsigned long hashcode = (ssd_buf_tag->offset / SSD_BUFFER_SIZE) % NTABLE_SSD_CACHE;
     return hashcode;
 }
 
-long HashTab_Lookup(SSDBufferTag *ssd_buf_tag, unsigned long hash_code)
+long HashTab_Lookup(SSDBufTag *ssd_buf_tag, unsigned long hash_code)
 {
     if (DEBUG)
         printf("[INFO] Lookup ssd_buf_tag: %lu\n",ssd_buf_tag->offset);
@@ -88,7 +84,7 @@ long HashTab_Lookup(SSDBufferTag *ssd_buf_tag, unsigned long hash_code)
     return -1;
 }
 
-long HashTab_Insert(SSDBufferTag *ssd_buf_tag, unsigned long hash_code, long desp_serial_id)
+long HashTab_Insert(SSDBufTag *ssd_buf_tag, unsigned long hash_code, long desp_serial_id)
 {
     if (DEBUG)
         printf("[INFO] Insert buf_tag: %lu\n",ssd_buf_tag->offset);
@@ -113,7 +109,7 @@ long HashTab_Insert(SSDBufferTag *ssd_buf_tag, unsigned long hash_code, long des
     return 0;
 }
 
-long HashTab_Delete(SSDBufferTag *ssd_buf_tag, unsigned long hash_code)
+long HashTab_Delete(SSDBufTag *ssd_buf_tag, unsigned long hash_code)
 {
     if (DEBUG)
         printf("[INFO] Delete buf_tag: %lu\n",ssd_buf_tag->offset);

@@ -9,13 +9,13 @@ CPPFLAGS += -I$(SMR_SSD_CACHE_DIR) -I$(SMR_SSD_CACHE_DIR)/smr-simulator -I$(SMR_
 
 RM = rm -rf
 RMSHM = rm -f /dev/shm/*
-OBJS = global.o report.o timerUtils.o shmlib.o ssd_buf_table.o ssd-cache.o inner_ssd_buf_table.o smr-simulator.o trace2call.o main.o lru.o
+OBJS = global.o report.o timerUtils.o shmlib.o hashtable_utils.o cache.o trace2call.o main.o losertree4pore.o pore.o lru.o lru_private.o lru_batch.o
 
 all: $(OBJS) smr-ssd-cache
 	@echo 'Successfully built smr-ssd-cache...'
 
 smr-ssd-cache:
-	$(CC) $(CPPFLAGS) $(CFLAGS) $(OBJS) -lrt -o $@
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(OBJS) -lrt -lm -o $@
 
 global.o: global.c
 	$(CC) $(CPPFLAGS) $(CFLAGS) -c $?
@@ -29,16 +29,10 @@ shmlib.o: shmlib.c
 timerUtils.o: timerUtils.c
 	$(CC) $(CPPFLAGS) $(CFLAGS) -c $?
 
-ssd_buf_table.o: ssd_buf_table.c
+hashtable_utils.o: hashtable_utils.c
 	$(CC) $(CPPFLAGS) $(CFLAGS) -c $?
 
-ssd-cahce.o: sdd-cache.c
-	$(CC) $(CPPFLAGS) $(CFLAGS) -c $?
-
-inner_ssd_buf_table.o: smr-simulator/inner_ssd_buf_table.c
-	$(CC) $(CPPFLAGS) $(CFLAGS) -c $?
-
-smr-simulator.o: smr-simulator/smr-simulator.c
+cahce.o: cache.c
 	$(CC) $(CPPFLAGS) $(CFLAGS) -c $?
 
 trace2call.o: trace2call.c
@@ -47,15 +41,26 @@ trace2call.o: trace2call.c
 main.o: main.c
 	$(CC) $(CPPFLAGS) $(CFLAGS) -c $?
 
+losertree4pore.o: strategy/losertree4pore.c
+	$(CC) $(CPPFLAGS) $(CFLAGS) -c $?
+
+pore.o: strategy/pore.c
+	$(CC) $(CPPFLAGS) $(CFLAGS) -c $?
+
 clock.o: strategy/clock.c
 	$(CC) $(CPPFLAGS) $(CFLAGS) -c $?
 
 lru.o: strategy/lru.c
 	$(CC) $(CPPFLAGS) $(CFLAGS) -c $?
 
-scan.o: strategy/scan.c
+lru_private.o: strategy/lru_private.c
 	$(CC) $(CPPFLAGS) $(CFLAGS) -c $?
 
+lru_batch.o: strategy/lru_batch.c
+	$(CC) $(CPPFLAGS) $(CFLAGS) -c $?
+
+scan.o: strategy/scan.c
+	$(CC) $(CPPFLAGS) $(CFLAGS) -c $?
 
 lruofband.o: strategy/lruofband.c
 	$(CC) $(CPPFLAGS) $(CFLAGS) -c $?

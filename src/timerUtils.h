@@ -11,9 +11,7 @@ typedef struct timeval timeval;
 
 typedef __suseconds_t microsecond_t;
 
-extern void _TimerStart(timeval* tv_start);
-
-extern void _TimerStop(timeval* tv_stop);
+extern void _TimerLap(timeval* tv);
 
 extern microsecond_t    TimerInterval_MICRO(timeval* tv_start, timeval* tv_stop);
 extern double           TimerInterval_SECOND(timeval* tv_start, timeval* tv_stop);

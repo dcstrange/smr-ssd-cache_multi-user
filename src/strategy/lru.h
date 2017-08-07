@@ -1,4 +1,7 @@
+#ifndef _LRU_GLOBAL_H_
+#define _LRU_GLOBAL_H_
 #define DEBUG 0
+
 /* ---------------------------lru---------------------------- */
 
 typedef struct
@@ -20,3 +23,4 @@ extern int initSSDBufferForLRU();
 extern long Unload_LRUBuf();
 extern int hitInLRUBuffer(long serial_id);
 extern void *insertLRUBuffer(long serial_id);
+#endif // _LRU_GLOBAL_H_

@@ -5,8 +5,10 @@
 #include <unistd.h>
 
 #include "global.h"
+#include "statusDef.h"
+
 #include "timerUtils.h"
-#include "ssd-cache.h"
+#include "cache.h"
 #include "strategy/lru.h"
 #include "trace2call.h"
 #include "report.h"
@@ -36,6 +38,11 @@ trace_to_iocall(char *trace_file_path, int isWriteOnly,off_t startLBA)
     char       *ssd_buffer;
     int	        returnCode;
     int         isFullSSDcache = 0;
+#ifdef CG_THROTTLE
+    static char* cgbuf;
+    int returncode = posix_memalign(&cgbuf, 512, 4096);
+#endif // CG_THROTTLE
+
     FILE *trace;
     if ((trace = fopen(trace_file_path, "rt")) == NULL)
     {
@@ -43,7 +50,7 @@ trace_to_iocall(char *trace_file_path, int isWriteOnly,off_t startLBA)
         exit(1);
     }
 
-    returnCode = posix_memalign(&ssd_buffer, 512, 16*sizeof(char) * BLCKSZ);
+    returnCode = posix_memalign(&ssd_buffer, 1024, 16*sizeof(char) * BLCKSZ);
     if (returnCode < 0)
     {
         error("posix memalign error\n");
@@ -56,11 +63,19 @@ trace_to_iocall(char *trace_file_path, int isWriteOnly,off_t startLBA)
         ssd_buffer[i] = '1';
     }
 
-    _TimerStart(&tv_trace_start);
+    _TimerLap(&tv_trace_start);
     while (!feof(trace))
     {
 //        if(feof(trace))
 //            fseek(trace,0,SEEK_SET);
+
+#ifdef CG_THROTTLE
+        if(pwrite(ram_fd,cgbuf,1024,0) <= 0)
+        {
+            printf("write ramdisk error:%d\n",errno);
+            exit(1);
+        }
+#endif // CG_THROTTLE
 
         returnCode = fscanf(trace, "%c %d %lu\n", &action, &i, &offset);
         if (returnCode < 0)
@@ -77,8 +92,9 @@ trace_to_iocall(char *trace_file_path, int isWriteOnly,off_t startLBA)
             isFullSSDcache = 1;
         }
 
-        _TimerStart(&tv_req_start);
-
+#ifdef LOG_SINGLE_REQ
+        _TimerLap(&tv_req_start);
+#endif // TIMER_SINGLE_REQ
         if (action == ACT_WRITE) // Write = 1
         {
             STT->reqcnt_w++;
@@ -89,23 +105,28 @@ trace_to_iocall(char *trace_file_path, int isWriteOnly,off_t startLBA)
             STT->reqcnt_r++;
             read_block(offset,ssd_buffer);
         }
-
-        _TimerStop(&tv_req_stop);
+#ifdef LOG_SINGLE_REQ
+        _TimerLap(&tv_req_stop);
         msec_req = TimerInterval_MICRO(&tv_req_start,&tv_req_stop);
-
-        if (STT->reqcnt_s++ % REPORT_INTERVAL == 0)
-            report_ontime();
-
         /*
             print log
             format:
             <req_id, r/w, ishit, time cost for: one request, read_ssd, write_ssd, read_smr, write_smr>
         */
-        sprintf(logbuf,"%lu,%c,%d,%ld,%ld,%ld,%ld,%ld\n",STT->reqcnt_s,action,IsHit,msec_req,msec_r_ssd,msec_w_ssd,msec_r_hdd,msec_w_hdd);
-        WriteLog(logbuf);
+        //sprintf(logbuf,"%lu,%c,%d,%ld,%ld,%ld,%ld,%ld\n",STT->reqcnt_s,action,IsHit,msec_req,msec_r_ssd,msec_w_ssd,msec_r_hdd,msec_w_hdd);
+       // WriteLog(logbuf);
         msec_r_ssd = msec_w_ssd = msec_r_hdd = msec_w_hdd = 0;
+#endif // TIMER_SINGLE_REQ
+
+        if (++STT->reqcnt_s % REPORT_INTERVAL == 0)
+        {
+            report_ontime();
+        }
+
+
+        //ResizeCacheUsage();
     }
-    _TimerStop(&tv_trace_end);
+    _TimerLap(&tv_trace_end);
     time_trace = Mirco2Sec(TimerInterval_MICRO(&tv_trace_start,&tv_trace_end));
     reportCurInfo();
     free(ssd_buffer);
@@ -128,11 +149,12 @@ static void reportCurInfo()
 
     printf(" total run time (s) : %lf\n time_read_ssd : %lf\n time_write_ssd : %lf\n time_read_smr : %lf\n time_write_smr : %lf\n",
            time_trace, STT->time_read_ssd, STT->time_write_ssd, STT->time_read_hdd, STT->time_write_hdd);
+    printf("Batch flush HDD time:%lu\n",msec_bw_hdd);
 }
 
 static void report_ontime()
 {
-//    _TimerStop(&tv_checkpoint);
+//    _TimerLap(&tv_checkpoint);
 //    double timecost = Mirco2Sec(TimerInterval_SECOND(&tv_trace_start,&tv_checkpoint));
     printf("totalreq:%lu, readreq:%lu, hit:%lu, readhit:%lu, flush_ssd_blk:%lu flush_hdd_blk:%lu, hashmiss:%lu, readhassmiss:%lu writehassmiss:%lu\n",
            STT->reqcnt_s,STT->reqcnt_r, STT->hitnum_s, STT->hitnum_r, STT->flush_ssd_blocks, STT->flush_hdd_blocks, STT->hashmiss_sum, STT->hashmiss_read, STT->hashmiss_write);
@@ -157,5 +179,6 @@ static void resetStatics()
     STT->hashmiss_sum = 0;
     STT->hashmiss_read = 0;
     STT->hashmiss_write = 0;
+    msec_bw_hdd = 0;
 }
 

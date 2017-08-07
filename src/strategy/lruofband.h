@@ -43,5 +43,5 @@ BandControl    *band_control;
 BandHashBucket *band_hashtable_for_lruofband;
 
 void		initSSDBufferForLRUofBand();
-SSDBufDesp  *getLRUofBandBuffer(SSDBufferTag*);
+SSDBufDesp  *getLRUofBandBuffer(SSDBufTag*);
 void           *hinInLRUofBandBuffer(SSDBufDesp *);

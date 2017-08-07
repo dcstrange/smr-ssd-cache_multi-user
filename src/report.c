@@ -23,7 +23,10 @@ int CloseLogFile()
 {
     return fclose(LogFile);
 }
+
 int WriteLog(char* log)
 {
+#ifdef LOG_ALLOW
     return fwrite(log,strlen(log),1,LogFile);
+#endif // LOG_ALLOW
 }

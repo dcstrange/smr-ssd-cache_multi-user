@@ -1,0 +1,236 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <event.h>
+#include <dirent.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include "global.h"
+#include "shmlib.h"
+#define  TIME_INTERVAL 60
+#define  MAX_USER 15
+const char* PATH_SHM = "/dev/shm";
+char file[MAX_USER][20];
+int req_total[MAX_USER];
+int req_hit[MAX_USER];
+int count;
+char maxusr[20],minusr[20];
+
+int renew_req()
+{
+	int i=0,len=0,total_inc=0,hit_inc=0;
+	double maxhit=0.0,minhit=100.0;
+	char command[1024];
+    char shellbuf[1024];
+	
+	char* str_pipeerr = "something error...\n";
+	char* str_nouser = "There is no sser ID = %d\n";
+	for(i=0;i<count&&i<15;i++)
+	{
+		FILE* fd_shell;
+		struct RuntimeSTAT *usrStat;
+		sprintf(command,"ls %s/%s",PATH_SHM,file[i]);
+		//getSTAT(file[i],usrStat);
+		fd_shell = popen(command,"r");
+    	if(fd_shell <= 0)
+    	{
+        	printf(str_pipeerr);
+    	}
+    	fgets(shellbuf,1023,fd_shell);
+
+    	len = strlen(shellbuf);
+    	if(len <= 0)
+    	{
+        	printf(str_nouser);
+    	}
+    	shellbuf[len-1]=0;
+    	char* fname = strrchr(shellbuf,'/');
+    	fname++;
+
+    	usrStat = (struct RuntimeSTAT*)SHM_get(fname,sizeof(struct RuntimeSTAT));
+		if(usrStat == NULL)
+    	{
+        	printf(str_pipeerr);
+    	}
+		total_inc = usrStat->reqcnt_s - req_total[i];
+		hit_inc = usrStat->hitnum_s - req_hit[i];
+		
+		req_total[i] = usrStat->reqcnt_s;
+		req_hit[i] = usrStat->hitnum_s;
+
+		float hitrate = (hit_inc*100)/(float)(total_inc);
+		if(hitrate>maxhit)
+		{
+			maxhit = hitrate;
+			strcpy(maxusr,file[i]);
+		}
+		if(hitrate<minhit)
+		{
+			minhit = hitrate;
+			strcpy(minusr,file[i]);
+		}
+	}
+	if(maxhit-minhit > 5)
+		return 1;			//need dynamic allocation
+	else
+		return 0;
+}
+
+int readFileList(char *basePath)
+{
+    DIR *dir;
+    struct dirent *ptr;
+	char targetfile[15] = "STAT_b";
+	char* str_selectbatch = "Input the batch ID you've set: ";
+	char str_bid[10];
+	int batchId;
+
+	fputs(str_selectbatch,stdout);
+    fgets(str_bid,9,stdin);
+    batchId = atoi(str_bid);
+	sprintf(targetfile,"%s%d",targetfile,batchId);
+
+	count = 0;
+    if ((dir=opendir(basePath)) == NULL)
+    {
+        perror("Open dir error...");
+        exit(1);
+    }
+
+    while ((ptr=readdir(dir)) != NULL)
+    {
+       if(ptr->d_type == 8)    ///file
+		{
+			if(strncmp(ptr->d_name,targetfile,strlen(targetfile))==0)
+			{
+				strcpy(file[count++],ptr->d_name);
+			}
+		}
+    }
+    closedir(dir);
+	int i=0;
+	printf("target file are:\n");
+	for(i=0;i<count;i++)
+		printf("%s\n",file[i]);
+	renew_req();
+    return 1;
+}
+  
+  
+static void  
+timeout_cb(int fd, short event, void *arg)  
+{  
+	struct timeval tv;  
+	struct event *timeout = arg;
+  	printf("calling back\n");
+
+	if(renew_req()==1)
+	{
+		struct RuntimeSTAT* maxusrStat;
+		//getSTAT(maxusr,maxusrStat);
+		FILE* fd_shell;
+		sprintf(command,"ls %s/%s",PATH_SHM,maxusr);
+		fd_shell = popen(command,"r");
+    	if(fd_shell <= 0)
+    	{
+       	 	printf(str_pipeerr);
+    	}
+    	fgets(shellbuf,1023,fd_shell);
+
+    	int len = strlen(shellbuf);
+    	if(len <= 0)
+    	{
+       		printf(str_nouser);
+    	}
+    	shellbuf[len-1]=0;
+    	char* fname = strrchr(shellbuf,'/');
+    	fname++;
+
+    	maxusrStat = (struct RuntimeSTAT*)SHM_get(fname,sizeof(struct RuntimeSTAT));
+		if(maxusrStat == NULL)
+    	{
+        	printf(str_pipeerr);
+    	}
+		struct RuntimeSTAT* minusrStat;
+		//getSTAT(minusr,minusrStat);
+		sprintf(command,"ls %s/%s",PATH_SHM,minusr);
+		fd_shell = popen(command,"r");
+    	if(fd_shell <= 0)
+    	{
+       	 	printf(str_pipeerr);
+    	}
+    	fgets(shellbuf,1023,fd_shell);
+
+    	len = strlen(shellbuf);
+    	if(len <= 0)
+    	{
+        	printf(str_nouser);
+    	}
+    	shellbuf[len-1]=0;
+    	fname = strrchr(shellbuf,'/');
+    	fname++;
+
+    	minusrStat = (struct RuntimeSTAT*)SHM_get(fname,sizeof(struct RuntimeSTAT));
+		if(minusrStat == NULL)
+    	{
+        	printf(str_pipeerr);
+    	}
+		int cut_off = maxusrStat->cacheLimit/10;
+		printf("old maxusr ssd %d,cut off = %d\n",maxusrStat->cacheLimit,cut_off);
+		maxusrStat->cacheLimit = maxusrStat->cacheLimit - cut_off;
+		printf("new maxusr ssd %d\n",maxusrStat->cacheLimit);
+		printf("old minusr ssd %d,cut off = %d\n",minusrStat->cacheLimit,cut_off);
+		minusrStat->cacheLimit = minusrStat->cacheLimit + cut_off;
+		printf("new minusr ssd %d\n",minusrStat->cacheLimit);
+	}
+	
+	printf("End of adjustment.\n");
+	evutil_timerclear(&tv);  
+	tv.tv_sec = TIME_INTERVAL;  
+	//重新注册event  
+	event_add(timeout, &tv);  
+} 
+
+int init()
+{
+	int i = 0;
+	count = 0;
+	maxusr[0]='\0';
+	minusr[0]='\0';
+	for(i=0;i<MAX_USER;i++)
+	{
+		req_total[i] = 0;
+		req_hit[i] = 0;
+		file[i][0]='\0'; 
+	}
+} 
+  
+
+int
+main(int argc, char** argv)
+{
+	readFileList(PATH_SHM);
+    struct event timeout;  
+	struct timeval tv;  
+   
+	/* Initalize the event library */  
+	//初始化event环境  
+	event_init();  
+  
+	/* Initalize one event */  
+	//设置事件  
+	evtimer_set(&timeout, timeout_cb, &timeout);  
+  
+	evutil_timerclear(&tv);  
+	tv.tv_sec = TIME_INTERVAL;
+	//注册事件  
+	event_add(&timeout, &tv);  
+   
+      
+	//等待,分发,处理事件  
+	event_dispatch();  
+  
+	return 0; 
+}
+

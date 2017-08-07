@@ -1,6 +1,6 @@
 #include <sys/mman.h>
 
-#include "ssd-cache.h"
+#include "cache.h"
 int multiuser_access()
 {
     return 0;
@@ -12,7 +12,7 @@ int multiuser_access()
 //    bool		found;
 //    int		returnCode = 0;
 //
-//    static SSDBufferTag ssd_buf_tag;
+//    static SSDBufTag ssd_buf_tag;
 //    static SSDBufDesp *ssd_buf_hdr;
 //
 //    ssd_buf_tag.offset = offset;

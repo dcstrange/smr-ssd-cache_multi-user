@@ -6,6 +6,8 @@
 #define ACT_READ '0'
 #define ACT_WRITE '1'
 
+//#define _CG_LIMIT 1
+
 #endif // TRACETOCALL
 
 extern void trace_to_iocall(char *trace_file_path, int isWriteOnly, off_t startLBA);
