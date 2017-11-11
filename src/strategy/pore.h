@@ -11,7 +11,7 @@ typedef struct StrategyDesp_pore
     unsigned 	    flag;
     long            pre,next;
     unsigned long   heat;
-    long   stamp;
+    long  	    stamp;
 }StrategyDesp_pore;
 
 //typedef struct StrategyCtrl_pore
@@ -28,7 +28,12 @@ typedef struct ZoneCtrl
     long            pagecnt_clean;
     long            weight;
     long            head,tail;
+    long	    stamp;
 }ZoneCtrl;
 
+extern int InitPORE();
+extern int LogInPoreBuffer(long despId, SSDBufTag tag, unsigned flag);
+extern int HitPoreBuffer(long despId, unsigned flag);
+extern long LogOutDesp_pore();
 
 #endif // _PORE_H

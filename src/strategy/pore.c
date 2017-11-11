@@ -10,9 +10,9 @@ static ZoneCtrl*            ZoneCtrlArray;
 static unsigned long*       ZoneSortArray;      /* The zone ID array sorted by weight(calculated customized). it is used to determine the open zones */
 static int                  OpenZoneCnt;        /* It represent the number of open zones and the first number elements in 'ZoneSortArray' is the open zones ID */
 
-static long                 PeriodLenth;        /* The period lenth which defines the times of eviction triggered */
+extern long                 PeriodLenth;        /* The period lenth which defines the times of eviction triggered */
 static long                 PeriodProgress;     /* Current times of eviction in a period lenth */
-static long                 StampInPeriod;      /* Current io sequenced number in a period lenth, used to distinct the degree of heat among zones */
+static long                 StampGlobal;      /* Current io sequenced number in a period lenth, used to distinct the degree of heat among zones */
 static int                  IsNewPeriod;
 
 
@@ -39,7 +39,7 @@ int
 InitPORE()
 {
     PeriodLenth = NBLOCK_SMR_FIFO;
-    StampInPeriod = PeriodProgress = 0;
+    StampGlobal = PeriodProgress = 0;
     IsNewPeriod = 0;
     GlobalDespArray = (StrategyDesp_pore*)malloc(sizeof(StrategyDesp_pore) * NBLOCK_SSD_CACHE);
     ZoneCtrlArray = (ZoneCtrl*)malloc(sizeof(ZoneCtrl) * NZONES);
@@ -72,7 +72,7 @@ InitPORE()
     return 0;
 }
 
-void
+int
 LogInPoreBuffer(long despId, SSDBufTag tag, unsigned flag)
 {
     /* activate the decriptor */
@@ -96,7 +96,7 @@ LogInPoreBuffer(long despId, SSDBufTag tag, unsigned flag)
     else{
         myZone->pagecnt_clean++;
     }
-
+    return 1;
 }
 
 static int periodCnt = 0;
@@ -138,7 +138,7 @@ LogOutDesp_pore()
     return evitedDesp->serial_id;
 }
 
-void
+int
 HitPoreBuffer(long despId, unsigned flag)
 {
     StrategyDesp_pore* myDesp = GlobalDespArray + despId;
@@ -152,6 +152,8 @@ HitPoreBuffer(long despId, unsigned flag)
         myZone->pagecnt_clean--;
     }
     myDesp->flag |= flag;
+
+    return 1;
 }
 
 /****************
@@ -300,16 +302,16 @@ redefineOpenZones()
     qsort_zone(0,nonEmptyZoneCnt-1);
 
     /** lookup sort result **/
-    int i;
-    for(i = 0; i<100; i++)
-    {
-        printf("%d: weight=%ld\t\theat=%ld\t\tndirty=%ld\t\tnclean=%ld\n",
-               i,
-               ZoneCtrlArray[ZoneSortArray[i]].weight,
-               ZoneCtrlArray[ZoneSortArray[i]].heat,
-               ZoneCtrlArray[ZoneSortArray[i]].pagecnt_dirty,
-               ZoneCtrlArray[ZoneSortArray[i]].pagecnt_clean);
-    }
+//    int i;
+//    for(i = 0; i<100; i++)
+//    {
+//        printf("%d: weight=%ld\t\theat=%ld\t\tndirty=%ld\t\tnclean=%ld\n",
+//               i,
+//               ZoneCtrlArray[ZoneSortArray[i]].weight,
+//               ZoneCtrlArray[ZoneSortArray[i]].heat,
+//               ZoneCtrlArray[ZoneSortArray[i]].pagecnt_dirty,
+//               ZoneCtrlArray[ZoneSortArray[i]].pagecnt_clean);
+//    }
 
     long n_chooseblk = 0, n = 0;
     while(n < nonEmptyZoneCnt && n_chooseblk < PeriodLenth)
@@ -371,7 +373,7 @@ getEvictZone()
 static long
 stamp(StrategyDesp_pore* desp)
 {
-    desp->stamp = ++StampInPeriod;
-    return StampInPeriod;
+    desp->stamp = ++StampGlobal;
+    return StampGlobal;
 }
 

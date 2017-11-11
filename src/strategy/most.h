@@ -1,6 +1,7 @@
 #define DEBUG 0
 /*----------------------------------Most---------------------------------*/
-#include <band_table.h>
+#include "band_table.h"
+#include "cache.h"
 
 typedef struct
 {
@@ -20,14 +21,13 @@ typedef struct
     long        nbands;          // # of cached bands
 } SSDBufferStrategyControlForMost;
 
-extern unsigned long NBANDTables;
-extern unsigned long NSMRBands;
 
 SSDBufDespForMost *ssd_buf_desps_for_most;
 BandDescForMost *band_descriptors_for_most;
 SSDBufferStrategyControlForMost *ssd_buf_strategy_ctrl_for_most;
 BandHashBucket *band_hashtable_for_most;
 
-void initSSDBufferForMost();
-SSDBufDesp *getMostBuffer(SSDBufferTag*);
-void hitInMostBuffer();
+extern int initSSDBufferForMost();
+extern int HitMostBuffer();
+extern long LogOutDesp_most();
+extern int LogInMostBuffer();

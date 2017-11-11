@@ -8,15 +8,16 @@
 //
 //#include "report.h"
 //#include "cache.h"
-//#include "smr-simulator.h"
+//#include "smr-simulator/simulator_logfifo.h"
 //#include "inner_ssd_buf_table.h"
 //#include "timerUtils.h"
 //#include "statusDef.h"
 //int  fd_fifo_part;
 //int  fd_smr_part;
 //
-//FIFOCtrl	    *global_fifo_ctrl;
-//FIFODesc		*fifo_desp_array;
+//static FIFOCtrl global_fifo_ctrl;
+//static FIFODesc* fifo_desp_array;
+//
 //char* BandBuffer;
 //static blksize_t NSMRBands = 194180;		// smr band cnt = 194180;
 //static unsigned long BNDSZ = 36*1024*1024;      // bandsize = 36MB  (18MB~36MB)
@@ -53,10 +54,7 @@
 //
 //static void* smr_fifo_monitor_thread();
 //
-//static void addIntoUseArray(FIFODesc* newDesp);
-//static void removeFromUsedArray(FIFODesc* desp);
-//static void addIntoFreeArray(FIFODesc* newDesp);
-//static FIFODesc* getFreeDesp();
+//static void removeFromArray(FIFODesc* desp);
 //
 //static unsigned long GetSMRActualBandSizeFromSSD(unsigned long offset);
 //static unsigned long GetSMRBandNumFromSSD(unsigned long offset);
@@ -67,32 +65,27 @@
 //struct aiocb aiolist[max_aio_count];
 //struct aiocb* aiocb_addr_list[max_aio_count];/* >= band block size */
 //
-//static FIFODesc* getFreeDesp();
 ///*
 // * init inner ssd buffer hash table, strategy_control, buffer, work_mem
 // */
 //void
-//initFIFOCache()
+//InitSimulator()
 //{
 //    /* initialliz related constants */
 //    SMR_DISK_OFFSET = NBLOCK_SMR_FIFO * BLCKSZ;
 //    band_size_num = BNDSZ / 1024 / 1024 / 2 + 1;
 //    num_each_size = NSMRBands / band_size_num;
 //
-//    global_fifo_ctrl = (FIFOCtrl*) malloc(sizeof(FIFOCtrl));
-//    global_fifo_ctrl->first_useId = global_fifo_ctrl->last_useId = -1;
-//    global_fifo_ctrl->first_freeId = 0;
-//    global_fifo_ctrl->last_freeId = NBLOCK_SMR_FIFO - 1;
-//    global_fifo_ctrl->n_used = 0;
+//    global_fifo_ctrl.n_used = 0;
+//    global_fifo_ctrl.head = global_fifo_ctrl.tail = 0;
 //
-//    fifo_desp_array = (FIFODesc *) malloc(sizeof(FIFODesc) * NBLOCK_SMR_FIFO);
+//    fifo_desp_array = (FIFODesc *)malloc(sizeof(FIFODesc) * NBLOCK_SMR_FIFO);
 //    FIFODesc* fifo_hdr = fifo_desp_array;
 //    long i;
 //    for (i = 0; i < NBLOCK_SMR_FIFO; fifo_hdr++, i++)
 //    {
 //        fifo_hdr->despId = i;
-//        fifo_hdr->next_freeId = (i==NBLOCK_SMR_FIFO-1) ? -1 : i + 1;
-//        fifo_hdr->pre_useId = fifo_hdr->next_useId = -1;
+//        fifo_hdr->isValid = 0;
 //    }
 //
 //    posix_memalign(&BandBuffer, 512, sizeof(char) * BNDSZ);
@@ -131,6 +124,11 @@
 //static void*
 //smr_fifo_monitor_thread()
 //{
+//    pthread_t th = pthread_self();
+//    pthread_detach(th);
+//    int interval = 10;
+//    printf("Simulator Auto-clean thread [%lu], clean interval %d seconds.\n",th,interval);
+//
 //    while (1)
 //    {
 //        pthread_mutex_lock(&simu_smr_fifo_mutex);
@@ -145,7 +143,7 @@
 //        {
 //            ACCESS_FLAG = 0;
 //            pthread_mutex_unlock(&simu_smr_fifo_mutex);
-//            sleep(5);
+//            sleep(interval);
 //        }
 //    }
 //    return NULL;
@@ -166,8 +164,8 @@
 //    for (i = 0; i * BLCKSZ < size; i++)
 //    {
 //        tag.offset = offset + i * BLCKSZ;
-//        ssd_hash = ssdtableHashcode(&tag);
-//        despId = ssdtableLookup(&tag, ssd_hash);
+//        ssd_hash = ssdtableHashcode(tag);
+//        despId = ssdtableLookup(tag, ssd_hash);
 //
 //        if (despId >= 0)
 //        {
@@ -221,8 +219,8 @@
 //    for (i = 0; i * BLCKSZ < size; i++)
 //    {
 //        tag.offset = offset + i * BLCKSZ;
-//        ssd_hash = ssdtableHashcode(&tag);
-//        despId = ssdtableLookup(&tag, ssd_hash);
+//        ssd_hash = ssdtableHashcode(tag);
+//        despId = ssdtableLookup(tag, ssd_hash);
 //        if (despId >= 0)
 //        {
 //            ssd_hdr = fifo_desp_array + despId;
@@ -233,7 +231,7 @@
 //            ssd_hdr = getFIFODesp();    // If there is no spare desp for allocate, do flush.
 //        }
 //        ssd_hdr->tag = tag;
-//        ssdtableInsert(&tag, ssd_hash, ssd_hdr->despId);
+//        ssdtableInsert(tag, ssd_hash, ssd_hdr->despId);
 //
 //        _TimerLap(&tv_start);
 //        returnCode = pwrite(fd_fifo_part, buffer, BLCKSZ, ssd_hdr->despId * BLCKSZ);
@@ -242,13 +240,6 @@
 //            printf("[ERROR] smrwrite():-------write to smr disk: fd=%d, errorcode=%d, offset=%lu\n", fd_fifo_part, returnCode, offset + i * BLCKSZ);
 //            exit(-1);
 //        }
-//        //returnCode = fsync(inner_ssd_fd);
-////        if (returnCode < 0)
-////        {
-////            printf("[ERROR] smrwrite():----------fsync\n");
-////            exit(-1);
-////        }
-//
 //        _TimerLap(&tv_stop);
 //        simu_time_write_fifo += TimerInterval_SECOND(&tv_start,&tv_stop);
 //        simu_n_write_fifo++;
@@ -259,86 +250,31 @@
 //}
 //
 //static void
-//removeFromUsedArray(FIFODesc* desp)
+//removeFromArray(FIFODesc* desp)
 //{
-//    if(desp->pre_useId < 0)
+//    if(desp->despId == global_fifo_ctrl.head)
 //    {
-//        global_fifo_ctrl->first_useId = desp->next_useId;
+//        global_fifo_ctrl.head = (global_fifo_ctrl.head + 1) % NBLOCK_SMR_FIFO;
 //    }
-//    else
-//    {
-//        fifo_desp_array[desp->pre_useId].next_useId = desp->next_useId;
-//    }
+//    desp->isValid = 0;
+//    global_fifo_ctrl.n_used--;
 //
-//    if(desp->next_useId < 0)
-//    {
-//        global_fifo_ctrl->last_useId = desp->pre_useId;
-//    }
-//    else
-//    {
-//        fifo_desp_array[desp->next_useId].pre_useId = desp->pre_useId;
-//    }
-//    desp->pre_useId = desp->next_useId = -1;
-//    global_fifo_ctrl->n_used--;
-//}
-//
-//static void
-//addIntoUseArray(FIFODesc* newDesp)
-//{
-//    if(global_fifo_ctrl->first_useId < 0)
-//    {
-//        global_fifo_ctrl->first_useId = global_fifo_ctrl->last_useId = newDesp->despId;
-//    }
-//    else
-//    {
-//        FIFODesc* tailDesp = fifo_desp_array + global_fifo_ctrl->last_useId;
-//        tailDesp->next_useId = newDesp->despId;
-//        newDesp->pre_useId = tailDesp->despId;
-//        global_fifo_ctrl->last_useId = newDesp->despId;
-//    }
-//    global_fifo_ctrl->n_used++;
-//}
-//
-//static void
-//addIntoFreeArray(FIFODesc* newDesp)
-//{
-//    if(global_fifo_ctrl->first_freeId < 0)
-//    {
-//        global_fifo_ctrl->first_freeId = global_fifo_ctrl->last_freeId = newDesp->despId;
-//    }
-//    else
-//    {
-//        FIFODesc* tailDesp = fifo_desp_array + global_fifo_ctrl->last_freeId;
-//        tailDesp->next_freeId = newDesp->despId;
-//        global_fifo_ctrl->last_freeId = newDesp->despId;
-//    }
-//}
-//
-//static FIFODesc*
-//getFreeDesp()
-//{
-//    if(global_fifo_ctrl->first_freeId < 0)
-//        return NULL;
-//    FIFODesc* freeDesp = fifo_desp_array + global_fifo_ctrl->first_freeId;
-//    global_fifo_ctrl->first_freeId = freeDesp->next_freeId;
-//
-//    freeDesp->next_freeId = -1;
-//    return freeDesp;
 //}
 //
 //static FIFODesc *
 //getFIFODesp()
 //{
 //    FIFODesc* newDesp;
-//    /* allocate free block */
-//    while((newDesp = getFreeDesp()) == NULL)
+//    if((global_fifo_ctrl.tail + 1) % NBLOCK_SMR_FIFO == global_fifo_ctrl.head)
 //    {
-//        /* no more free blocks in fifo, do flush*/
+//        /* Log structure array is full fill */
 //        flushFIFO();
 //    }
 //
-//    /* add into used fifo array */
-//    addIntoUseArray(newDesp);
+//    /* Append to tail */
+//    newDesp = fifo_desp_array + global_fifo_ctrl.tail;
+//    newDesp->isValid = 1;
+//    global_fifo_ctrl.tail = (global_fifo_ctrl.tail + 1) % NBLOCK_SMR_FIFO;
 //
 //    return newDesp;
 //}
@@ -346,7 +282,7 @@
 //static volatile void
 //flushFIFO()
 //{
-//    if(global_fifo_ctrl->first_useId < 0)
+//    if(global_fifo_ctrl.head == global_fifo_ctrl.tail) // Log structure array is empty.
 //        return;
 //
 //    int     returnCode;
@@ -354,7 +290,7 @@
 //    long    dirty_n_inBand = 0;
 //    double  wtrAmp;
 //
-//    FIFODesc* target = fifo_desp_array + global_fifo_ctrl->first_useId;
+//    FIFODesc* target = fifo_desp_array + global_fifo_ctrl.head;
 //
 //    /* Create a band-sized buffer for readind and flushing whole band bytes */
 //    long		band_size = GetSMRActualBandSizeFromSSD(target->tag.offset);
@@ -382,11 +318,11 @@
 //    /**--------------------------------------------------- **/
 //    int aio_read_cnt = 0;
 //    long curPos = target->despId;
-//    while(curPos >= 0)
+//    while(curPos != global_fifo_ctrl.tail)
 //    {
 //        FIFODesc* curDesp = fifo_desp_array + curPos;
-//        long nextPos = curDesp->next_useId;
-//        if (GetSMRBandNumFromSSD(curDesp->tag.offset) == BandNum)
+//        long nextPos = (curDesp->despId + 1) % NBLOCK_SMR_FIFO;
+//        if (curDesp->isValid && GetSMRBandNumFromSSD(curDesp->tag.offset) == BandNum)
 //        {
 //            /* The block belongs the same band with the header of fifo. */
 //            off_t offset_inband = GetSMROffsetInBandFromSSD(curDesp);
@@ -413,11 +349,14 @@
 //#endif // SIMULATOR_AIO
 //            /* clean the meta data */
 //            dirty_n_inBand++;
-//            unsigned long hash_code = ssdtableHashcode(&curDesp->tag);
-//            ssdtableDelete(&curDesp->tag, hash_code);
+//            unsigned long hash_code = ssdtableHashcode(curDesp->tag);
+//            ssdtableDelete(curDesp->tag, hash_code);
 //
-//            removeFromUsedArray(curDesp);
-//            addIntoFreeArray(curDesp);
+//            removeFromArray(curDesp);
+//        }
+//        else if(!curDesp->isValid && curDesp->despId == global_fifo_ctrl.head)
+//        {
+//            global_fifo_ctrl.head = (global_fifo_ctrl.head + 1) % NBLOCK_SMR_FIFO;
 //        }
 //        curPos = nextPos;
 //    }

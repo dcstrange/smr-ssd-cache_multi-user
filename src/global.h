@@ -4,6 +4,11 @@
 #include <sys/types.h>
 
 #include "statusDef.h"
+
+
+#define SSD_BUF_VALID 0x01
+#define SSD_BUF_DIRTY 0x02
+
 struct RuntimeSTAT
 {
     /** This user basic info */
@@ -12,7 +17,7 @@ struct RuntimeSTAT
     unsigned int traceId;
     unsigned long startLBA;
     unsigned int isWriteOnly;
-
+    unsigned long trace_req_amount;
     /** Runtime strategy refered parameter **/
     //union StratetyUnion strategyRef;
 
@@ -42,14 +47,17 @@ struct RuntimeSTAT
     blksize_t hashmiss_sum;
     blksize_t hashmiss_read;
     blksize_t hashmiss_write;
+    
+    /* simulator */
+    double wtrAmp_cur;
 };
 
 typedef enum
 {
 //    CLOCK = 0,
-    LRU,
-    LRUofBand,
-//    Most,
+//    LRU,
+//    LRUofBand,
+    Most,
 //    Most_Dirty,
 //    SCAN,
 //    CMR,
@@ -60,10 +68,11 @@ typedef enum
 //    AvgBandHot,
 //    HotDivSize,
     /** add for multiuser **/
-    LRU_global,
+//    LRU_global,
     LRU_private,
-    LRU_batch,
-    PORE
+//    LRU_batch,
+    PORE,
+    PORE_PLUS
 }SSDEvictionStrategy;
 
 /** This user basic info */
@@ -76,7 +85,7 @@ extern SSDEvictionStrategy EvictStrategy;
 extern unsigned long Param1;
 extern unsigned long Param2;
 extern int BatchSize;
-
+extern long PeriodLenth;
 /** All users basic setup **/
 extern blkcnt_t NBLOCK_SSD_CACHE;
 extern blkcnt_t NTABLE_SSD_CACHE;
@@ -86,13 +95,14 @@ extern blkcnt_t NBLOCK_SMR_FIFO;
 //extern blkcnt_t NSMRBlocks;		// 2621952*8KB~20GB
 //extern blkcnt_t NSSDs;
 extern blkcnt_t NSSDTables;
-extern blkcnt_t NBANDTables;
+//extern blkcnt_t NBANDTables;
 extern blkcnt_t SSD_SIZE;
-extern blkcnt_t BLCKSZ;
-extern blkcnt_t NZONES;
-extern blkcnt_t ZONESZ;
-extern blkcnt_t WRITEAMPLIFICATION;
-extern blkcnt_t NCOLDBAND;
+extern  blksize_t BLCKSZ;
+extern  blkcnt_t  NZONES;
+extern  blksize_t ZONESZ;
+
+extern char simu_smr_fifo_device[];
+extern char simu_smr_smr_device[];
 extern char smr_device[];
 extern char ssd_device[];
 extern char ram_device[1024];
@@ -106,16 +116,16 @@ extern int ram_fd;
 extern struct RuntimeSTAT* STT;
 
 /** Shared memory variable names **/
-extern const char* SHM_SSDBUF_STRATEGY_CTRL;
-extern const char* SHM_SSDBUF_STRATEGY_DESP;
+extern char* SHM_SSDBUF_STRATEGY_CTRL;
+extern char* SHM_SSDBUF_STRATEGY_DESP;
 
-extern const char* SHM_SSDBUF_DESP_CTRL;
-extern const char* SHM_SSDBUF_DESPS;
+extern char* SHM_SSDBUF_DESP_CTRL;
+extern char* SHM_SSDBUF_DESPS;
 
-extern const char* SHM_SSDBUF_HASHTABLE_CTRL;
-extern const char* SHM_SSDBUF_HASHTABLE;
-extern const char* SHM_SSDBUF_HASHDESPS;
-extern const char* SHM_PROCESS_REQ_LOCK;
+extern char* SHM_SSDBUF_HASHTABLE_CTRL;
+extern  char* SHM_SSDBUF_HASHTABLE;
+extern char* SHM_SSDBUF_HASHDESPS;
+extern char* SHM_PROCESS_REQ_LOCK;
 
-extern const char* PATH_LOG;
+extern char* PATH_LOG;
 #endif

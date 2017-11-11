@@ -12,6 +12,7 @@
 #include <errno.h>
 #include "report.h"
 #include "shmlib.h"
+
 /*
     Only call this func one time, otherwise it may cause content confused.
 */

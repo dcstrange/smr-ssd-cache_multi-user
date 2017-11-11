@@ -7,7 +7,31 @@
 #include "global.h"
 #include "timerUtils.h"
 
+/* about using 'shmlib' for MULTIUSER*/
+#ifdef MULTIUSER
+    #define multi_SHM_alloc(shm_name,len)       SHM_alloc(shm_name,len)
+    #define multi_SHM_free(shm_name,shm_vir_addr,len)   SHM_free(shm_name,shm_vir_addr,len)
+    #define multi_SHM_get(shm_name,len)         SHM_get(shm_name,len)
+    #define multi_SHM_lock_n_check(lockname)    SHM_lock_n_check(lockname)
+    #define multi_SHM_lock(lockname)            SHM_lock(lockname)
+    #define multi_SHM_unlock(lockname)          SHM_unlock(lockname)
+    #define multi_SHM_mutex_init(lock)          SHM_mutex_init(lock)
+    #define multi_SHM_mutex_lock(lock)          SHM_mutex_lock(lock)
+    #define multi_SHM_mutex_unlock(lock)        SHM_mutex_unlock(lock)
+#else
+    #define multi_SHM_alloc(shm_name,len)       malloc(len)
+    #define multi_SHM_free(shm_name,shm_vir_addr,len)   free(shm_vir_addr)
+    #define multi_SHM_get(shm_name,len)         NULL// unregister
+    #define multi_SHM_lock_n_check(lockname)    0       //0:success, -1:failure.
+    #define multi_SHM_lock(lockname)            //
+    #define multi_SHM_unlock(lockname)          //
+    #define multi_SHM_mutex_init(lock)          //SHM_mutex_init(lock)
+    #define multi_SHM_mutex_lock(lock)          //SHM_mutex_lock(lock)
+    #define multi_SHM_mutex_unlock(lock)        //SHM_mutex_unlock(lock)
+#endif // MULTIUSER
+
 #define bool    unsigned char
+
 
 typedef struct
 {
@@ -39,7 +63,7 @@ extern void read_block(off_t offset, char* ssd_buffer);
 extern void write_block(off_t offset, char* ssd_buffer);
 extern void read_band(off_t offset, char* ssd_buffer);
 extern void write_band(off_t offset, char* ssd_buffer);
-extern bool isSamebuf(SSDBufTag *, SSDBufTag *);
+//extern bool isSamebuf(SSDBufTag *, SSDBufTag *);
 extern int ResizeCacheUsage();
 extern void CopySSDBufTag(SSDBufTag* objectTag, SSDBufTag* sourceTag);
 

@@ -17,26 +17,19 @@
 //{
 //    DespTag tag;
 //    long    despId;
-//    long    pre_useId;
-//    long    next_useId;
-//    long    next_freeId;
+//    int     isValid;
 //} FIFODesc;
-//
-//
 //
 //typedef struct
 //{
 //	unsigned long	n_used;
-//	long		    first_useId;		// Head of list of used
-//	long		    last_useId;		// Tail of list of used
-//	long            first_freeId;
-//	long            last_freeId;
+//             long   head, tail;
 //} FIFOCtrl;
 //
 //extern int  fd_fifo_part;
 //extern int  fd_smr_part;
 //
-//extern void initFIFOCache();
+//extern void InitSimulator();
 //extern int smrread(char* buffer, size_t size, off_t offset);
 //extern int smrwrite(char* buffer, size_t size, off_t offset);
 //extern void PrintSimulatorStatistic();

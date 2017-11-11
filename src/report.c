@@ -1,4 +1,7 @@
+#include "string.h"
 #include "report.h"
+#include "statusDef.h"
+#include "unistd.h"
 FILE* LogFile;
 void info(char* str)
 {

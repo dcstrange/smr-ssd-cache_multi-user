@@ -1,8 +1,9 @@
-#include "losertree4pore.h"
+#include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
+#include "losertree4pore.h"
 
-static unsigned long OVERFLOW_LEAF_VALUE =  0x7FFFFFFFFFFFFFFF; // Not a elegant way to define the max leaf value.
+#define OVERFLOW_LEAF_VALUE 0x7FFFFFFFFFFFFFFF // Not a elegant way to define the max leaf value.
 
 static int lg2_above(int V)
 {

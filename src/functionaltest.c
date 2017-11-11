@@ -22,7 +22,8 @@ FunctionalTest()
     initDesp[3].serial_id = 4;
     initDesp[4].serial_id = 5;
 
-    int winnerPath, winnerDesp,winnerVal;
+    int winnerPath;
+    long winnerDesp,winnerVal;
     StrategyDesp_pore* initAddress[5];
     int i=0;
     while(i<5){
@@ -32,7 +33,7 @@ FunctionalTest()
 
     void* passport;
     winnerVal = LoserTree_Create(5,initAddress,&passport,&winnerPath,&winnerDesp);
-    printf("winnerPath = %d, winnerDesp = %d winnerVal = %d\n", winnerPath, winnerDesp,winnerVal);
+    printf("winnerPath = %d, winnerDesp = %ld winnerVal = %ld\n", winnerPath, winnerDesp,winnerVal);
 
     int id = 1;
     while(1){
@@ -43,6 +44,6 @@ FunctionalTest()
         newdesp->serial_id = id;
         newdesp->stamp = c;
         winnerVal = LoserTree_GetWinner(passport,newdesp,&winnerPath,&winnerDesp);
-        printf("winnerPath = %d, winnerDesp = %d winnerVal = %d\n", winnerPath, winnerDesp,winnerVal);
+        printf("winnerPath = %d, winnerDesp = %ld winnerVal = %ld\n", winnerPath, winnerDesp,winnerVal);
     }
  }

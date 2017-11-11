@@ -8,7 +8,7 @@ off_t StartLBA;
 int WriteOnly;
 int BatchSize;
 SSDEvictionStrategy EvictStrategy;
-
+long PeriodLenth;
 unsigned long Param1;
 unsigned long Param2;
 
@@ -23,12 +23,13 @@ blksize_t NBLOCK_SMR_FIFO;
 blksize_t NBANDTables = 2621952;
 blksize_t SSD_SIZE = 4096;
 blksize_t BLCKSZ = 4096;
-blksize_t NZONES = 194180;    // NZONES * ZONESZ =
-blksize_t ZONESZ = 20971520;//20MB    // Unit: Byte.
-blksize_t WRITEAMPLIFICATION = 100;
-blksize_t NCOLDBAND = 1;
-char smr_device[] = "/dev/sda";
-char ssd_device[] = "/dev/sdd";
+blkcnt_t  NZONES = 466034;/* size = 8TB */ //194180;    // NZONES * ZONESZ =
+blksize_t ZONESZ = 18874368;//18MB    // Unit: Byte.
+
+char simu_smr_fifo_device[] = "/dev/sdb1";
+char simu_smr_smr_device[] = "/dev/sdb2";
+char smr_device[] = "/dev/sdc";
+char ssd_device[] = "/dev/memdiska";// "/mnt/ssd/ssd";
 char ram_device[1024];
 
 int BandOrBlock;
@@ -40,16 +41,16 @@ int ram_fd;
 struct RuntimeSTAT* STT;
 
 /** Shared memory variable names **/
-const char* SHM_SSDBUF_STRATEGY_CTRL = "SHM_SSDBUF_STRATEGY_CTRL";
-const char* SHM_SSDBUF_STRATEGY_DESP = "SHM_SSDBUF_STRATEGY_DESP";
+char* SHM_SSDBUF_STRATEGY_CTRL = "SHM_SSDBUF_STRATEGY_CTRL";
+char* SHM_SSDBUF_STRATEGY_DESP = "SHM_SSDBUF_STRATEGY_DESP";
 
-const char* SHM_SSDBUF_DESP_CTRL = "SHM_SSDBUF_DESP_CTRL";
-const char* SHM_SSDBUF_DESPS = "SHM_SSDBUF_DESPS";
+char* SHM_SSDBUF_DESP_CTRL = "SHM_SSDBUF_DESP_CTRL";
+char* SHM_SSDBUF_DESPS = "SHM_SSDBUF_DESPS";
 
-const char* SHM_SSDBUF_HASHTABLE_CTRL = "SHM_SSDBUF_HASHTABLE_CTRL";
-const char* SHM_SSDBUF_HASHTABLE = "SHM_SSDBUF_HASHTABLE";
-const char* SHM_SSDBUF_HASHDESPS =  "SHM_SSDBUF_HASHDESPS";
-const char* SHM_PROCESS_REQ_LOCK = "SHM_PROCESS_REQ_LOCK";
+char* SHM_SSDBUF_HASHTABLE_CTRL = "SHM_SSDBUF_HASHTABLE_CTRL";
+char* SHM_SSDBUF_HASHTABLE = "SHM_SSDBUF_HASHTABLE";
+char* SHM_SSDBUF_HASHDESPS =  "SHM_SSDBUF_HASHDESPS";
+char* SHM_PROCESS_REQ_LOCK = "SHM_PROCESS_REQ_LOCK";
 
-const char* PATH_LOG = "/home/outputs/logs";
+char* PATH_LOG = "/home/outputs/logs";
 
