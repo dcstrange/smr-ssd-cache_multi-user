@@ -327,9 +327,9 @@ FLAG_CACHEOUT:
             case PAUL :
                 n_evict = LogOut_PAUL(buf_despid_array, max_n_batch, suggest_type);
                 break;
-            case OLDPORE :
-                n_evict = LogOut_oldpore(buf_despid_array, max_n_batch, suggest_type);
-                break;
+//            case OLDPORE :
+//                n_evict = LogOut_oldpore(buf_despid_array, max_n_batch, suggest_type);
+//                break;
 //            case PORE:
 //                int i;
 //                n_evict = 64;
@@ -416,16 +416,16 @@ initStrategySSDBuffer()
     case LRU_rw:
         return initSSDBufferFor_LRU_rw();
 //        case Most:              return initSSDBufferForMost();
-    case PORE:
-        return InitPORE();
+//    case PORE:
+//        return InitPORE();
 //    case PORE_PLUS:
 //        return InitPORE_plus();
 //    case PORE_PLUS_V2:
 //        return Init_poreplus_v2();
     case PAUL:
         return Init_PUAL();
-    case OLDPORE:
-        return Init_oldpore();
+//    case OLDPORE:
+//        return Init_oldpore();
     case MOST:
         return Init_most();
     case MOST_RW:
@@ -447,8 +447,8 @@ Strategy_Desp_LogOut(unsigned flag)
     case LRU_rw:
         usr_warning("LRU_RW wrong time function revoke\n");
 //       case Most:              return LogOutDesp_most();
-    case PORE:
-        return LogOutDesp_pore();
+//    case PORE:
+//        return LogOutDesp_pore();
 //    case PORE_PLUS:
 //        return LogOutDesp_pore_plus();
 //    case PORE_PLUS_V2:
@@ -473,16 +473,16 @@ Strategy_Desp_HitIn(SSDBufDesp* desp)
         return hitInBuffer_LRU_rw(desp->serial_id, desp->ssd_buf_flag);
 //        case LRU_batch:         return hitInBuffer_LRU_batch(desp->serial_id);
 //        case Most:              return HitMostBuffer();
-    case PORE:
-        return HitPoreBuffer(desp->serial_id, desp->ssd_buf_flag);
+//    case PORE:
+//        return HitPoreBuffer(desp->serial_id, desp->ssd_buf_flag);
 //    case PORE_PLUS:
 //        return HitPoreBuffer_plus(desp->ssd_buf_flag, desp->ssd_buf_flag);
 //    case PORE_PLUS_V2:
 //        return Hit_poreplus_v2(desp->serial_id, desp->ssd_buf_flag);
     case PAUL:
         return Hit_PAUL(desp->serial_id, desp->ssd_buf_flag);
-    case OLDPORE:
-        return Hit_oldpore(desp->serial_id, desp->ssd_buf_flag);    
+//    case OLDPORE:
+//        return Hit_oldpore(desp->serial_id, desp->ssd_buf_flag);    
     case MOST:
         return Hit_most(desp->serial_id, desp->ssd_buf_flag);
     case MOST_RW:
@@ -506,16 +506,16 @@ Strategy_Desp_LogIn(SSDBufDesp* desp)
         return insertBuffer_LRU_private(desp->serial_id);
 //        case LRU_batch:         return insertBuffer_LRU_batch(serial_id);
 //        case Most:              return LogInMostBuffer(desp->serial_id,desp->ssd_buf_tag);
-    case PORE:
-        return LogInPoreBuffer(desp->serial_id, desp->ssd_buf_tag, desp->ssd_buf_flag);
+//    case PORE:
+//        return LogInPoreBuffer(desp->serial_id, desp->ssd_buf_tag, desp->ssd_buf_flag);
 //    case PORE_PLUS:
 //        return LogInPoreBuffer_plus(desp->serial_id, desp->ssd_buf_tag, desp->ssd_buf_flag);
 //    case PORE_PLUS_V2:
 //        return LogIn_poreplus_v2(desp->serial_id, desp->ssd_buf_tag, desp->ssd_buf_flag);
     case PAUL:
         return LogIn_PAUL(desp->serial_id, desp->ssd_buf_tag, desp->ssd_buf_flag);
-   case OLDPORE:
-        return LogIn_oldpore(desp->serial_id, desp->ssd_buf_tag, desp->ssd_buf_flag);
+//   case OLDPORE:
+//        return LogIn_oldpore(desp->serial_id, desp->ssd_buf_tag, desp->ssd_buf_flag);
     case MOST:
         return LogIn_most(desp->serial_id, desp->ssd_buf_tag, desp->ssd_buf_flag);
     case MOST_RW:

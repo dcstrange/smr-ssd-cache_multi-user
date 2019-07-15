@@ -10,10 +10,10 @@
 
 #define EVICT_DITRY_GRAIN 64 // The grain of once dirty blocks eviction
 
-typedef struct
+typedef struct CleanDespCtrl
 {
-    long            pagecnt_clean;
-    long            head,tail;
+    blkcnt_t            pagecnt_clean;
+    blkcnt_t            head,tail;
     pthread_mutex_t lock;
 } CleanDespCtrl;
 
@@ -47,11 +47,6 @@ static void add2CleanArrayHead(Dscptr_paul* desp);
 static void unloadfromCleanArray(Dscptr_paul* desp);
 static void move2CleanArrayHead(Dscptr_paul* desp);
 
-/** PAUL**/
-static int redefineOpenZones();
-static int get_FrozenOpZone_Seq();
-static int random_pick(float weight1, float weight2, float obey);
-
 /* 
     Out of Date(OOD)
     Alpha: We call those blocks(drt or cln) which are already out of the recent history window as Out of Date (OOD), 
@@ -61,7 +56,19 @@ static int random_pick(float weight1, float weight2, float obey);
     The OOD will be used to calculate the representation of Recall Ratio.
 */
 static long OODstamp; // = StampGlobal - (long)(NBLOCK_SSD_CACHE * 0.8)
+static int WhoEvict_thistime, WhoEvict_lasttime = 0; // Used to mark which type (r/w) of blocks should be evict in the [alpha] costmodel. (-1,clean), (1, dirty), (0, unknown)
+static struct cm_info
+{
+    int num_OODblks = 0;
+    int num_totalblks = 0;
+};
 
+
+/** PAUL**/
+static struct cm_info redefineOpenZones();
+static int get_FrozenOpZone_Seq();
+static int random_pick(float weight1, float weight2, float obey);
+static int restart_cm_alpha()
 
 
 static volatile unsigned long
@@ -213,6 +220,22 @@ LogOut_PAUL(long * out_despid_array, int max_n_batch, enum_t_vict suggest_type)
     }
     else if(suggest_type == ENUM_B_Any)
     {
+        /* Here we use the Cost Model as the default strategy */
+        if(WhoEvict_thistime == 0)
+        { // unknown. So restart the [alpha] costmodel.
+            WhoEvict_thistime = WhoEvict_lasttime = restart_alpha_cm();
+        }
+
+        if(WhoEvict_thistime == -1)
+        { // clean
+            goto FLAG_EVICT_CLEAN
+        }
+        else if(WhoEvict_thistime == 1)
+        { //dirty
+            goto FLAG_EVICT_DIRTYZONE;
+        }
+
+
         if(STT->incache_n_clean == 0)
             goto FLAG_EVICT_DIRTYZONE;
         else if(STT->incache_n_dirty == 0)
@@ -248,7 +271,7 @@ FLAG_EVICT_DIRTYZONE:
     if(CurEvictZoneSeq < 0 || Cycle_Progress >= Cycle_Length || Cycle_Progress == 0){
         start_new_cycle();
 
-        printf("Ouput of last Cycle: clean:%ld, dirty:%ld\n",n_evict_clean_cycle,n_evict_dirty_cycle);
+        printf("Output of last Cycle: clean:%ld, dirty:%ld\n",n_evict_clean_cycle,n_evict_dirty_cycle);
         n_evict_clean_cycle = n_evict_dirty_cycle = 0;
 
         if((CurEvictZoneSeq = get_FrozenOpZone_Seq()) < 0)
@@ -277,6 +300,50 @@ FLAG_EVICT_DIRTYZONE:
 //    printf("SCORE REPORT: zone id[%d], score[%lu]\n", evictZone->zoneId, evictZone->score);
     return evict_cnt;
 }
+
+static int restart_cm_alpha()
+{
+    start_new_cycle();
+
+    struct cm_info cm_info_drt, cm_info_cln;
+    int cost_drt = -1, cost_cln = -1;
+
+
+    /* Get number of dirty OODs. NOTICE! Have to get the dirty first and then the clean, the order cannot be reverted.*/
+    if(STT->incache_n_dirty > 0){ 
+        cm_info_drt = redefineOpenZones();
+
+    }
+    /* Get number of clean OODs. NOTICE! Have to get the dirty first and then the clean, the order cannot be reverted. */
+    if(STT->incache_n_clean > 0){
+        blkcnt_t despId_cln = CleanCtrl.tail;
+        Dscptr_paul* cleandesp;  
+        int cnt = 0;
+        while(cnt < cm_info_drt.totalblks && despId_cln >= 0)
+        {
+            cleandesp = GlobalDespArray + despId_cln;
+            if(cleandesp->stamp < OODstamp){
+                cm_info_cln.num_OODblks ++;
+            }
+            despId_cln = cleandesp->pre;
+            cnt ++;
+        }
+        cm_info_cln.num_totalblks = cnt;
+
+        cost_
+    }
+
+    if(cost_drt == -1 && cost_cln == -1)
+        usr_error("paul.c: alpha costmodel found the cost og dirty and clean are both -1");
+    
+    if(cost_drt == -1)
+        return -1;
+    if(cost_cln == -1)
+        retrun 1;
+    
+    return (cost_cln < cost_drt) ? -1 : 1;
+}
+
 
 /****************
 ** Utilities ****
@@ -447,14 +514,15 @@ extractNonEmptyZoneId()
     while(zoneId < NZONES)
     {
         ZoneCtrl_pual* zone = ZoneCtrl_pualArray + zoneId;
-        if(zone->pagecnt_dirty > 0)
+        if(zone->pagecnt_dirty 
+        > 0)
         {
             ZoneSortArray[cnt] = zoneId;
             cnt++;
         }
         zoneId++;
 
-        if(zone->activate_after_n_cycles > 0)
+        if(WhoEvict_lasttime == 1 && zone->activate_after_n_cycles > 0)
             zone->activate_after_n_cycles --;
     }
     return cnt;
@@ -493,10 +561,11 @@ pause_and_score()
 }
 
 
-static int
+static struct cm_info
 redefineOpenZones()
 {
-    NonEmptyZoneCnt = extractNonEmptyZoneId(); // >< #ugly way. 
+    struct cm_info cm_drt;
+    NonEmptyZoneCnt = extractNonEmptyZoneId(); // >< #ugly way.  
     if(NonEmptyZoneCnt == 0)
         return 0;
     pause_and_score(); /** ARS (Actually Release Space) */
@@ -518,25 +587,15 @@ redefineOpenZones()
             zone->activate_after_n_cycles = 2;  // Deactivate the zone for the next 2 cycles.
             OpenZoneSet[OpenZoneCnt] = zone->zoneId;
             OpenZoneCnt++;
+
+            cm_drt.num_OODblks += zone->OOD_num;
+            cm_drt.num_totalblks += zone->pagecnt_dirty;
         }
         else if(zone->activate_after_n_cycles > 0)
             usr_warning("PAUL FILTERS A REPEAT ZONE.");
         i++;
     }
-
-    /** lookup sort result **/
-//    int i;
-//    for(i = 0; i<NonEmptyZoneCnt; i++)
-//    {
-//        printf("%d: score=%f\t\theat=%ld\t\tndirty=%ld\t\tnclean=%ld\n",
-//               i,
-//               ZoneCtrl_pualArray[ZoneSortArray[i]].score,
-//               ZoneCtrl_pualArray[ZoneSortArray[i]].heat,
-//               ZoneCtrl_pualArray[ZoneSortArray[i]].pagecnt_dirty,
-//               ZoneCtrl_pualArray[ZoneSortArray[i]].pagecnt_clean);
-//    }
-
-    return OpenZoneCnt;
+    return cm_drt;
 }
 
 static int
@@ -544,7 +603,7 @@ get_FrozenOpZone_Seq()
 {
     int seq = 0;
     blkcnt_t frozenSeq = -1;
-    long frozenStamp = CycleID;
+    long frozenStamp = StampGlobal;
     while(seq < OpenZoneCnt)
     {
         ZoneCtrl_pual* ctrl = ZoneCtrl_pualArray + OpenZoneSet[seq];
@@ -580,4 +639,16 @@ static int random_pick(float weight1, float weight2, float obey)
     if(token < de_point)
         return 1;
     return 2;
+}
+
+
+/**************
+ * Cost Model * 
+ * ************/
+
+
+static int costmodel()
+{
+
+
 }
