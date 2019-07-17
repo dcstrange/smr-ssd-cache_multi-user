@@ -1,8 +1,8 @@
 #include <stdlib.h>
+#include "../timerUtils.h"
 #include "paul.h"
 #include "../statusDef.h"
 #include "../report.h"
-#include "costmodel.h"
 #include <math.h>
 //#define random(x) (rand()%x)
 #define IsDirty(flag) ( (flag & SSD_BUF_DIRTY) != 0 )
@@ -57,7 +57,7 @@ static void move2CleanArrayHead(Dscptr_paul* desp);
 */
 static long OODstamp; // = StampGlobal - (long)(NBLOCK_SSD_CACHE * 0.8)
 static int WhoEvict_thistime, WhoEvict_lasttime = 0; // Used to mark which type (r/w) of blocks should be evict in the [alpha] costmodel. (-1,clean), (1, dirty), (0, unknown)
-static struct cm_info
+struct blk_cm_info
 {
     int num_OODblks = 0;
     int num_totalblks = 0;
@@ -65,11 +65,29 @@ static struct cm_info
 
 
 /** PAUL**/
-static struct cm_info redefineOpenZones();
+static struct blk_cm_info redefineOpenZones();
 static int get_FrozenOpZone_Seq();
-static int random_pick(float weight1, float weight2, float obey);
+static int random_pick (float weight1, float weight2, float obey);
 static int restart_cm_alpha()
 
+/** Cost Model(alpha) **/
+struct COSTMODEL_Alpha
+{
+    microsecond_t Lat_SMR_read
+    microsecond_t (*FX_WA) (int blkcnt);
+    
+    double (*Cost_Dirty) (struct blk_cm_info dirty);
+    double (*Cost_Clean) (struct blk_cm_info clean);
+};
+static microsecond_t costmodel_fx_wa(int blkcnt);
+static double costmodel_Dirty_alpha(struct blk_cm_info dirty);
+static double costmodel_Clean_alpha(struct blk_cm_info clean);
+static struct COSTMODEL_Alpha CM_Alpha = {
+    .Lat_SMR_read = 0,
+    .FX_WA = costmodel_fx_wa,
+    .Cost_Dirty = costmodel_evaDirty_alpha,
+    .Cost_Clean = costmodel_evaClean_alpha,
+};
 
 static volatile unsigned long
 getZoneNum(size_t offset)
@@ -305,32 +323,32 @@ static int restart_cm_alpha()
 {
     start_new_cycle();
 
-    struct cm_info cm_info_drt, cm_info_cln;
-    int cost_drt = -1, cost_cln = -1;
+    struct blk_cm_info blk_cm_info_drt, blk_cm_info_cln;
+    double cost_drt = -1, cost_cln = -1;
 
 
     /* Get number of dirty OODs. NOTICE! Have to get the dirty first and then the clean, the order cannot be reverted.*/
     if(STT->incache_n_dirty > 0){ 
-        cm_info_drt = redefineOpenZones();
-
+        blk_cm_info_drt = redefineOpenZones();
+        cost_drt = CM_Alpha.Cost_Dirty(blk_cm_info_dry);
     }
     /* Get number of clean OODs. NOTICE! Have to get the dirty first and then the clean, the order cannot be reverted. */
     if(STT->incache_n_clean > 0){
         blkcnt_t despId_cln = CleanCtrl.tail;
         Dscptr_paul* cleandesp;  
         int cnt = 0;
-        while(cnt < cm_info_drt.totalblks && despId_cln >= 0)
+        while(cnt < blk_cm_info_drt.totalblks && despId_cln >= 0)
         {
             cleandesp = GlobalDespArray + despId_cln;
             if(cleandesp->stamp < OODstamp){
-                cm_info_cln.num_OODblks ++;
+                blk_cm_info_cln.num_OODblks ++;
             }
             despId_cln = cleandesp->pre;
             cnt ++;
         }
-        cm_info_cln.num_totalblks = cnt;
+        blk_cm_info_cln.num_totalblks = cnt;
 
-        cost_
+        cost_cln = CM_Alpha.Cost_Clean(blk_cm_info_cln);
     }
 
     if(cost_drt == -1 && cost_cln == -1)
@@ -561,10 +579,10 @@ pause_and_score()
 }
 
 
-static struct cm_info
+static struct blk_cm_info
 redefineOpenZones()
 {
-    struct cm_info cm_drt;
+    struct blk_cm_info cm_drt;
     NonEmptyZoneCnt = extractNonEmptyZoneId(); // >< #ugly way.  
     if(NonEmptyZoneCnt == 0)
         return 0;
@@ -646,9 +664,19 @@ static int random_pick(float weight1, float weight2, float obey)
  * Cost Model * 
  * ************/
 
-
-static int costmodel()
-{
-
-
+static microsecond_t costmodel_fx_wa(int blkcnt){
+    microsecond_t wa_for_blkcnt = 0; // F(blkcnt) = RMW + k*blkcnt; <Regression function of actual test results> 
+    return wa_for_blkcnt;
+}
+static double costmodel_evaDirty_alpha(struct blk_cm_info dirty){
+    double evaDirty = CM_Alpha.FX_WA(dirty.num_totalblks) / dirty.num_OODblks;
+    return evaDirty;
+}
+static double costmodel_evaClean_alpha(struct blk_cm_info clean){
+    double evaClean = \
+    ( \
+        (0 * clean.num_totalblks) + \
+        (clean.num_totalblks - clean.num_OODblks) * CM_Alhpa.Lat_SMR_read \
+    ) / clean.num_OODblks; 
+    return evaClean;
 }
