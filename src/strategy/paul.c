@@ -58,8 +58,8 @@ static void move2CleanArrayHead(Dscptr_paul* desp);
 static long OODstamp; // = StampGlobal - (long)(NBLOCK_SSD_CACHE * 0.8)
 struct blk_cm_info
 {
-    int num_OODblks = 0;
-    int num_totalblks = 0;
+    int num_OODblks; 
+    int num_totalblks; 
 };
 
 
@@ -68,7 +68,7 @@ struct blk_cm_info
 static struct blk_cm_info redefineOpenZones();
 static int get_FrozenOpZone_Seq();
 static int random_pick (float weight1, float weight2, float obey);
-static int restart_cm_alpha()
+static int restart_cm_alpha();
 
 typedef enum EvictPhrase_t
 {
@@ -82,15 +82,15 @@ static int NumEvict_thistime_apprx = -1;
 /** Cost Model(alpha) **/
 struct COSTMODEL_Alpha
 {
-    microsecond_t Lat_SMR_read
+    microsecond_t Lat_SMR_read;
     microsecond_t (*FX_WA) (int blkcnt);
     
     double (*Cost_Dirty) (struct blk_cm_info dirty);
     double (*Cost_Clean) (struct blk_cm_info clean);
 };
 static microsecond_t costmodel_fx_wa(int blkcnt);
-static double costmodel_Dirty_alpha(struct blk_cm_info dirty);
-static double costmodel_Clean_alpha(struct blk_cm_info clean);
+static double costmodel_evaDirty_alpha(struct blk_cm_info dirty);
+static double costmodel_evaClean_alpha(struct blk_cm_info clean);
 static struct COSTMODEL_Alpha CM_Alpha = {
     .Lat_SMR_read = 0,
     .FX_WA = costmodel_fx_wa,
@@ -266,7 +266,7 @@ LogOut_PAUL(long * out_despid_array, int max_n_batch, enum_t_vict suggest_type)
 
         if(WhoEvict_Now == EP_Clean)
         { // clean
-            goto FLAG_EVICT_CLEAN
+            goto FLAG_EVICT_CLEAN;
         }
         else if(WhoEvict_Now == EP_Dirty)
         { //dirty
@@ -289,7 +289,7 @@ FLAG_EVICT_CLEAN:
         evict_cnt ++;
     }
 
-    if(CleanCtrl.pagecnt_clean == 0 || (NumEvict_thistime_apprx > 0 && Num_evict_clean_cycle >= NumEvict_thistime_apprx){
+    if(CleanCtrl.pagecnt_clean == 0 || (NumEvict_thistime_apprx > 0 && Num_evict_clean_cycle >= NumEvict_thistime_apprx)){
         Num_evict_clean_cycle = 0;
         NumEvict_thistime_apprx = 0;
         WhoEvict_Now = EP_Reset; 
@@ -319,7 +319,7 @@ FLAG_EVICT_DIRTYZONE:
     /* If end the dirty eviction */
     if(Cycle_Progress >= Cycle_Length || (CurEvictZoneSeq = get_FrozenOpZone_Seq()) < 0){
         /* End and set the eviction type to *Unknown*. */
-        printf("Output of last Cycle: clean:%ld, dirty:%ld\n",n_evict_clean_cycle,Num_evict_dirty_cycle);
+        printf("Output of last Cycle: clean:%ld, dirty:%ld\n",Num_evict_clean_cycle,Num_evict_dirty_cycle);
         
         Num_evict_dirty_cycle = 0;
         NumEvict_thistime_apprx = 0;
@@ -338,7 +338,7 @@ static EvictPhrase_t run_cm_alpha()
     if(STT->incache_n_dirty == 0 || STT->incache_n_clean == 0) 
         usr_error("Illegal to run CostModel:alpha");
 
-    struct blk_cm_info blk_cm_info_drt, blk_cm_info_cln;
+    struct blk_cm_info blk_cm_info_drt={0,0}, blk_cm_info_cln={0,0};
     double cost_drt = -1, cost_cln = -1;
 
     /* Get number of dirty OODs. NOTICE! Have to get the dirty first and then the clean, the order cannot be reverted.*/
@@ -349,7 +349,7 @@ static EvictPhrase_t run_cm_alpha()
     blkcnt_t despId_cln = CleanCtrl.tail;
     Dscptr_paul* cleandesp;  
     int cnt = 0;
-    while(cnt < blk_cm_info_drt.totalblks && despId_cln >= 0)
+    while(cnt < blk_cm_info_drt.num_totalblks && despId_cln >= 0)
     {
         cleandesp = GlobalDespArray + despId_cln;
         if(cleandesp->stamp < OODstamp){
@@ -372,7 +372,7 @@ static EvictPhrase_t run_cm_alpha()
     }
     else{
         NumEvict_thistime_apprx = blk_cm_info_drt.num_totalblks;
-       return EP_Dirty
+       return EP_Dirty;
     }
 }
 
@@ -599,7 +599,7 @@ redefineOpenZones()
     struct blk_cm_info cm_drt;
     NonEmptyZoneCnt = extractNonEmptyZoneId(); // >< #ugly way.  
     if(NonEmptyZoneCnt == 0)
-        return 0;
+        usr_error("There are no zone for open."); 
     pause_and_score(); /** ARS (Actually Release Space) */
     qsort_zone(0,NonEmptyZoneCnt-1);
 
@@ -690,7 +690,7 @@ static double costmodel_evaClean_alpha(struct blk_cm_info clean){
     double evaClean = \
     ( \
         (0 * clean.num_totalblks) + \
-        (clean.num_totalblks - clean.num_OODblks) * CM_Alhpa.Lat_SMR_read \
+        (clean.num_totalblks - clean.num_OODblks) * CM_Alpha.Lat_SMR_read \
     ) / clean.num_OODblks; 
     return evaClean;
 }
