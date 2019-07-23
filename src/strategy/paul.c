@@ -92,7 +92,7 @@ static microsecond_t costmodel_fx_wa(int blkcnt);
 static double costmodel_evaDirty_alpha(struct blk_cm_info dirty);
 static double costmodel_evaClean_alpha(struct blk_cm_info clean);
 static struct COSTMODEL_Alpha CM_Alpha = {
-    .Lat_SMR_read = 0,
+    .Lat_SMR_read = 14000, //14ms per read
     .FX_WA = costmodel_fx_wa,
     .Cost_Dirty = costmodel_evaDirty_alpha,
     .Cost_Clean = costmodel_evaClean_alpha,
@@ -657,21 +657,21 @@ get_FrozenOpZone_Seq()
     return frozenSeq;   // If return value <= 0, it means 1. here already has no any dirty block in the selected bands. 2. here has not started the cycle.
 }
 
-static int random_pick(float weight1, float weight2, float obey)
-{
-    //return (weight1 < weight2) ? 1 : 2;
-    // let weight as the standard, set as 1,
-    float inc_times = (weight2 / weight1) - 1;
-    inc_times *= obey;
+// static int random_pick(float weight1, float weight2, float obey)
+// {
+//     //return (weight1 < weight2) ? 1 : 2;
+//     // let weight as the standard, set as 1,
+//     float inc_times = (weight2 / weight1) - 1;
+//     inc_times *= obey;
 
-    float de_point = 1000 * (1 / (2 + inc_times));
-//    rand_init();
-    int token = rand() % 1000;
+//     float de_point = 1000 * (1 / (2 + inc_times));
+// //    rand_init();
+//     int token = rand() % 1000;
 
-    if(token < de_point)
-        return 1;
-    return 2;
-}
+//     if(token < de_point)
+//         return 1;
+//     return 2;
+// }
 
 
 /**************
