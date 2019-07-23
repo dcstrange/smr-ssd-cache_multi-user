@@ -94,128 +94,30 @@ trace_to_iocall(char *trace_file_path, int isWriteOnly,off_t startLBA)
         exit(EXIT_FAILURE);
     }
 
-    while (!feof(trace) && STT->reqcnt_s < total_n_req) // 84340000
+    int test_zone_num = 5000 // 20M * 5K = 100G data amount
+    int zone_cnt = 0;
+    int inzone_wrt_blknum = UserId;
+    while (zone_cnt < test_zone_num) 
     {
+        int zone_offset = zone_cnt * ZONESZ;
+        zone_cnt += 2;
+        off_t inzone_off;
+        int inzone_cnt = 0;
+        while (inzone_cnt < inzone_wrt_blknum)
+        {
+            inzone_off = zone_offset + (inzone_wrt_blknum - inzone_cnt) * BLKSZ;
+            inzone_cnt ++;
 
-        returnCode = fscanf(trace, "%c %d %lu\n", &action, &i, &offset);
-        if (returnCode < 0)
-        {
-            usr_warning("error while reading trace file.");
-            break;
-        }
-        if(skiprows > 0)
-        {
-            skiprows -- ;
-            continue;
-        }
-#ifdef CG_THROTTLE
-        if(pwrite(ram_fd,cgbuf,1024,0) <= 0)
-        {
-            printf("write ramdisk error:%d\n",errno);
-            exit(1);
-        }
-#endif // CG_THROTTLE
-
-        offset = (offset + startLBA) * BLKSZ;
-        if(!isFullSSDcache && (STT->flush_clean_blocks + STT->flush_hdd_blocks) > 0)
-        {
-            reportCurInfo();
-            resetStatics();        // Because we do not care about the statistic while the process of filling SSD cache.
-            isFullSSDcache = 1;
-        }
-#ifdef R3BALANCER_ON
-        static int tk = 1;
-        if(tk && (STT->flush_clean_blocks + STT->flush_hdd_blocks) >= TS_StartSize)
-        {   /* When T-Switcher start working */
-            info("T-Switcher start working...");
-            reportCurInfo();
-            tk = 0;
-        }
-#endif // R3BALANCER_ON
-
-#ifdef LOG_SINGLE_REQ
-        _TimerLap(&tv_req_start);
-#endif // TIMER_SINGLE_REQ
-        _TimerLap(&tv_start_io);
-        sprintf(pipebuf,"%c,%lu\n",action,offset);
-        if (action == ACT_WRITE) // Write = 1
-        {
-            STT->reqcnt_w ++;
-            STT->reqcnt_s ++;
-        //For simulate ten processes running
-//            write_block(offset, ssd_buffer);
-
-//            int i = 0;
-//            for(1; i < 10; i ++)
-//            {
-//                offset += (i * 20000000 * BLKSZ);
-            write_block(offset, ssd_buffer);
-//            }
-            #ifdef HRC_PROCS_N
-            int i;
-            for(i = 0; i < HRC_PROCS_N; i++)
-            {
-                pipe_write(PipeEnds_of_MAIN[i],pipebuf,64);
-            }
-            #endif // HRC_PROCS_N
+            _TimerLap(&tv_start_io);
+            write_block(inzone_off, ssd_buffer);
             _TimerLap(&tv_stop_io);
+
             io_latency = TimerInterval_SECOND(&tv_start_io, &tv_stop_io);
 #ifdef LOG_IO_LAT
             sprintf(log,"%f,%c\n", io_latency, action);
             _Log(log, log_lat);
 #endif // LOG_IO_LAT
-        }
-        else if (!isWriteOnly && action == ACT_READ)    // read = 9
-        {
-            STT->reqcnt_r ++;
-            STT->reqcnt_s ++;
-//            int i = 0;
-//            for(1; i < 10; i ++)
-//            {
-//                offset += (i * 20000000 * BLKSZ);
-                read_block(offset,ssd_buffer);
-//            }
-            #ifdef HRC_PROCS_N
-            int i;
-            for(i = 0; i < HRC_PROCS_N; i++)
-            {
-                pipe_write(PipeEnds_of_MAIN[i],pipebuf,64);
-            }
-            #endif // HRC_PROCS_N
-            _TimerLap(&tv_stop_io);
-            io_latency = TimerInterval_SECOND(&tv_start_io, &tv_stop_io);
-#ifdef LOG_IO_LAT
-            sprintf(log,"%f,%c\n", io_latency, action);
-            _Log(log, log_lat);
-#endif //LOG_IO_LAT
-        }
-        else if (action != ACT_READ)
-        {
-            printf("Trace file gets a wrong result: action = %c.\n",action);
-            exit(-1);
-        }
-#ifdef LOG_SINGLE_REQ  //Legacy
-        _TimerLap(&tv_req_stop);
-        msec_req = TimerInterval_MICRO(&tv_req_start,&tv_req_stop);
-        /*
-            print log
-            format:
-            <req_id, r/w, ishit, time cost for: one request, read_ssd, write_ssd, read_smr, write_smr>
-        */
-        // sprintf(logbuf,"%lu,%c,%d,%ld,%ld,%ld,%ld,%ld\n",STT->reqcnt_s,action,IsHit,msec_req,msec_r_ssd,msec_w_ssd,msec_r_hdd,msec_w_hdd);
-        //_Log(logbuf);
-        msec_r_ssd = msec_w_ssd = msec_r_hdd = msec_w_hdd = 0;
-#endif // TIMER_SINGLE_REQ
-
-        if (STT->reqcnt_s % REPORT_INTERVAL == 0)
-        {
-            report_ontime();
-            if(STT->reqcnt_s % ((blkcnt_t)REPORT_INTERVAL*500) == 0)
-                reportCurInfo();
-        }
-
-
-
+        }        
 
         //ResizeCacheUsage();
     }
