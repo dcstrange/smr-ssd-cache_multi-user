@@ -1,6 +1,6 @@
 #!/bin/bash 
 path_cleanscript=/home/fei/devel/smr-ssd-cache_multi-user/src/exps/fio_benchmarks/paperexps
-exe_clean=${path_cleanscript}/smr-pb-forceclean.sh /mnt/smr/smr-rawdisk small 
+exe_clean="${path_cleanscript}/smr-pb-forceclean.sh /mnt/smr/smr-rawdisk small" 
 
 bash ${exe_clean}
 

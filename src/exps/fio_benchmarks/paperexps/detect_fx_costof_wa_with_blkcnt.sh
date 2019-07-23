@@ -12,7 +12,7 @@ bash ${exe_clean}
 
 # [job]
 SIZE=$((4*100))G
-OFF_INC=4K
+NR=4608
 
 cat<< EOF > wa-data.fio
 [global]
@@ -22,17 +22,14 @@ filesize=${SIZE}
 blocksize=${BS}
 ioengine=sync
 direct=1
-rw=write:${OFF_INC}
-
+rw=randwrite:${NR}
 
 [job]
-runtime=150
-time_based
-write_lat_log=./iolog_${SIZE}
+write_lat_log=./iolog_${SIZE}_${OFF_INC}
 EOF
 
 echo "${SIZE}..."
-fio ./wa-data.fio > R-${SIZE}.log
+fio ./wa-data.fio > R-${SIZE}-${OFF_INC}.log
 echo "Finish."
 bash ${exe_clean}
 
