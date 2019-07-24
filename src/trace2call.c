@@ -207,16 +207,12 @@ trace_to_iocall(char *trace_file_path, int isWriteOnly,off_t startLBA)
         msec_r_ssd = msec_w_ssd = msec_r_hdd = msec_w_hdd = 0;
 #endif // TIMER_SINGLE_REQ
 
-        if (STT->reqcnt_s % REPORT_INTERVAL == 0)
+        if (STT->reqcnt_s > 0 && STT->reqcnt_s % REPORT_INTERVAL == 0)
         {
             report_ontime();
             if(STT->reqcnt_s % ((blkcnt_t)REPORT_INTERVAL*500) == 0)
                 reportCurInfo();
         }
-
-
-
-
         //ResizeCacheUsage();
     }
 
