@@ -95,16 +95,18 @@ trace_to_iocall(char *trace_file_path, int isWriteOnly,off_t startLBA)
     }
 
     int test_zone_num = 5000; // 20M * 5K = 100G data amount
-    int zone_cnt = 0;
     int inzone_wrt_blknum = UserId;
-    while (zone_cnt < test_zone_num) 
+    
+    int zone_cntr = 0;
+    while (zone_cntr < test_zone_num) 
     {
-        int zone_offset = zone_cnt * ZONESZ;
-        zone_cnt += 2;
-        off_t inzone_off;
+        off_t zone_offset = (off_t)ZONESZ * zone_cntr;
+        zone_cntr += 2;
+        
         int inzone_cnt = 0;
         while (inzone_cnt < inzone_wrt_blknum)
         {
+            off_t inzone_off;
             inzone_off = zone_offset + (inzone_wrt_blknum - inzone_cnt) * BLKSZ;
             inzone_cnt ++;
 
