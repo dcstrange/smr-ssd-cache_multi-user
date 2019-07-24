@@ -94,7 +94,7 @@ trace_to_iocall(char *trace_file_path, int isWriteOnly,off_t startLBA)
         exit(EXIT_FAILURE);
     }
 
-    int test_zone_num = 5000 // 20M * 5K = 100G data amount
+    int test_zone_num = 5000; // 20M * 5K = 100G data amount
     int zone_cnt = 0;
     int inzone_wrt_blknum = UserId;
     while (zone_cnt < test_zone_num) 
