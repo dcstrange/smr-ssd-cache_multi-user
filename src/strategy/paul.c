@@ -686,8 +686,8 @@ get_FrozenOpZone_Seq()
  * ************/
 
 static microsecond_t costmodel_fx_wa(int blkcnt){
-    microsecond_t wa_for_blkcnt = 0; // F(blkcnt) = RMW + k*blkcnt; <Regression function of actual test results>
-    return 900000;
+    microsecond_t lat_for_blkcnt = 728*blkcnt + 435833; // F(blkcnt) = RMW + k*blkcnt; <Regression function of actual test results>
+    return lat_for_blkcnt;
 }
 static double costmodel_evaDirty_alpha(struct blk_cm_info dirty){
     double evaDirty = CM_Alpha.FX_WA(dirty.num_totalblks) / (dirty.num_OODblks+1);
