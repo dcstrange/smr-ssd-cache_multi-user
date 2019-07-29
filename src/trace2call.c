@@ -306,7 +306,7 @@ static void report_ontime()
         printf("totalreq:%lu, readreq:%lu, wrtreq:%lu, hit:%lu, readhit:%lu, flush_ssd_blk:%lu flush_dirty_blk:%lu\n",
            STT->reqcnt_s, STT->reqcnt_r, STT->reqcnt_w, STT->hitnum_s, STT->hitnum_r, STT->flush_ssd_blocks, STT->flush_hdd_blocks);
         _TimerLap(&tv_trace_end);
-        int timecost = Mirco2Sec(TimerInterval_MICRO(&tv_trace_start,&tv_trace_end));
+        double timecost = Mirco2Sec(TimerInterval_MICRO(&tv_trace_start,&tv_trace_end));
         printf("current run time: %d\n",timecost);
 }
 
