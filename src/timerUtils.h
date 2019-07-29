@@ -9,7 +9,7 @@
 
 typedef struct timeval timeval;
 
-typedef __suseconds_t microsecond_t;
+typedef __useconds_t microsecond_t;
 
 extern void _TimerLap(timeval* tv);
 

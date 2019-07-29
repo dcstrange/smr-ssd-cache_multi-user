@@ -17,7 +17,7 @@
 //#include "/home/fei/git/Func-Utils/pipelib.h"
 #include "hrc.h"
 extern struct RuntimeSTAT* STT;
-#define REPORT_INTERVAL 50000
+#define REPORT_INTERVAL 250000   // 1GB for blksize=4KB
 
 static void do_HRC();
 static void reportCurInfo();
@@ -83,8 +83,8 @@ trace_to_iocall(char *trace_file_path, int isWriteOnly,off_t startLBA)
     _TimerLap(&tv_trace_start);
     static int req_cnt = 0;
 
-    blkcnt_t total_n_req = isWriteOnly ? 150000000 : 150000000;
-    blkcnt_t skiprows = isWriteOnly ? 0:0; //50000000 : 50000000;
+    blkcnt_t total_n_req = isWriteOnly ? (blkcnt_t)REPORT_INTERVAL*500*10 : REPORT_INTERVAL*500*10;
+    blkcnt_t skiprows = 0; //isWriteOnly ?  50000000 : 100000000;
 
 
     FILE *trace;
@@ -207,14 +207,12 @@ trace_to_iocall(char *trace_file_path, int isWriteOnly,off_t startLBA)
         msec_r_ssd = msec_w_ssd = msec_r_hdd = msec_w_hdd = 0;
 #endif // TIMER_SINGLE_REQ
 
-        if (STT->reqcnt_s % REPORT_INTERVAL == 0)
+        if (STT->reqcnt_s > 0 && STT->reqcnt_s % REPORT_INTERVAL == 0)
         {
             report_ontime();
+            if(STT->reqcnt_s % ((blkcnt_t)REPORT_INTERVAL*500) == 0)
+                reportCurInfo();
         }
-
-
-
-
         //ResizeCacheUsage();
     }
 
