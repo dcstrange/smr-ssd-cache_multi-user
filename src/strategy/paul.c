@@ -687,6 +687,7 @@ static microsecond_t costmodel_fx_wa(int blkcnt){
     microsecond_t lat_for_blkcnt = 728*blkcnt + 435833; // F(blkcnt) = RMW + k*blkcnt; <Regression function of actual test results>
     return lat_for_blkcnt;
 }
+
 static double costmodel_evaDirty_alpha(struct blk_cm_info * dirty, int num){
     if(num <= 0)
         return -1;
