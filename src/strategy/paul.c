@@ -696,6 +696,7 @@ static double costmodel_evaDirty_alpha(struct blk_cm_info * dirty, int num){
     while(i < num){
         evaDirty += (double)CM_Alpha.FX_WA(dirty[i].num_totalblks);
         ood_num += dirty[i].num_OODblks;
+        i++;
     }
     
     return evaDirty / (ood_num + 1);
