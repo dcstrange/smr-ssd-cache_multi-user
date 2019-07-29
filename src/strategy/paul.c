@@ -341,10 +341,11 @@ static EvictPhrase_t run_cm_alpha()
         usr_error("Illegal to run CostModel:alpha");
 
     /* Get number of dirty OODs. NOTICE! Have to get the dirty first and then the clean, the order cannot be reverted.*/
-    if((CurEvictZoneSeq = get_FrozenOpZone_Seq()) < 0)
+    int zoneid;
+    if((zoneid = get_FrozenOpZone_Seq()) < 0)
         redefineOpenZones();
     
-    ZoneCtrl_pual* evictZone = ZoneCtrl_pualArray + OpenZoneSet[CurEvictZoneSeq];
+    ZoneCtrl_pual* evictZone = ZoneCtrl_pualArray + OpenZoneSet[zoneid];
     Dscptr_paul* frozenDesp = GlobalDespArray + evictZone->tail;
     unsigned long stamp_dirty = frozenDesp->stamp;
 
