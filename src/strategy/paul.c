@@ -146,7 +146,7 @@ Init_PUAL()
     CleanCtrl.head = CleanCtrl.tail = -1;
 
     WhoEvict_Now = WhoEvict_Before = EP_Reset;
-    NumEvict_thistime_apprx = NBLOCK_SSD_CACHE/10
+    NumEvict_thistime_apprx = NBLOCK_SSD_CACHE/10;
     return 0;
 }
 
