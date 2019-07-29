@@ -628,7 +628,7 @@ static double redefineOpenZones()
 
             cm_drt.num_OODblks = zone->OOD_num;
             cm_drt.num_totalblks = zone->pagecnt_dirty;
-            cost_ret += CM_Alpha.Cost_Dirty(blk_cm_info_drt);
+            cost_ret += CM_Alpha.Cost_Dirty(cm_drt);
         }
         else if(zone->activate_after_n_cycles > 0)
             //info("PAUL FILTERS A REPEAT ZONE.");
