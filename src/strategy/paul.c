@@ -77,7 +77,7 @@ typedef enum EvictPhrase_t
     EP_Reset
 } EvictPhrase_t;
 static EvictPhrase_t WhoEvict_Now, WhoEvict_Before; // Used to mark which type (r/w) of blocks should be evict in the [alpha] costmodel. (-1,clean), (1, dirty), (0, unknown)
-static int NumEvict_thistime_apprx = -1;
+static int NumEvict_thistime_apprx = NBLOCK_SSD_CACHE/10;
 
 /** Cost Model(alpha) **/
 struct COSTMODEL_Alpha
@@ -291,7 +291,7 @@ FLAG_EVICT_CLEAN:
         evict_cnt ++;
     }
 
-    if(CleanCtrl.pagecnt_clean == 0 || (NumEvict_thistime_apprx > 0 && Num_evict_clean_cycle >= NumEvict_thistime_apprx)){
+    if(CleanCtrl.pagecnt_clean == 0 || (Num_evict_clean_cycle >= NumEvict_thistime_apprx)){
         Num_evict_clean_cycle = 0;
         NumEvict_thistime_apprx = 0;
         WhoEvict_Now = EP_Reset;
@@ -350,7 +350,7 @@ static EvictPhrase_t run_cm_alpha()
     blkcnt_t despId_cln = CleanCtrl.tail;
     Dscptr_paul* cleandesp;
     int cnt = 0;
-    while(cnt < blk_cm_info_drt.num_totalblks && despId_cln >= 0)
+    while(cnt < NumEvict_thistime_apprx && despId_cln >= 0)
     {
         cleandesp = GlobalDespArray + despId_cln;
         if(cleandesp->stamp < OODstamp){
@@ -690,7 +690,7 @@ static microsecond_t costmodel_fx_wa(int blkcnt){
     return lat_for_blkcnt;
 }
 static double costmodel_evaDirty_alpha(struct blk_cm_info dirty){
-    double evaDirty = CM_Alpha.FX_WA(dirty.num_totalblks) / (dirty.num_OODblks+1);
+    double evaDirty = (double)CM_Alpha.FX_WA(dirty.num_totalblks) / (dirty.num_OODblks+1);
     return evaDirty;
 }
 static double costmodel_evaClean_alpha(struct blk_cm_info clean){
