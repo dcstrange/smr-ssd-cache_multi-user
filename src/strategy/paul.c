@@ -65,7 +65,7 @@ struct blk_cm_info
 
 
 /** PAUL**/
-static struct blk_cm_info redefineOpenZones();
+static double redefineOpenZones();
 static int get_FrozenOpZone_Seq();
 static int random_pick (float weight1, float weight2, float obey);
 static int restart_cm_alpha();
@@ -344,8 +344,7 @@ static EvictPhrase_t run_cm_alpha()
     double cost_drt = -1, cost_cln = -1;
 
     /* Get number of dirty OODs. NOTICE! Have to get the dirty first and then the clean, the order cannot be reverted.*/
-    blk_cm_info_drt = redefineOpenZones();
-    cost_drt = CM_Alpha.Cost_Dirty(blk_cm_info_drt);
+    cost_drt = redefineOpenZones();
 
     /* Get number of clean OODs. NOTICE! Have to get the dirty first and then the clean, the order cannot be reverted. */
     blkcnt_t despId_cln = CleanCtrl.tail;
@@ -600,9 +599,9 @@ pause_and_score()
 }
 
 
-static struct blk_cm_info
-redefineOpenZones()
+static double redefineOpenZones()
 {
+    double cost_ret = 0; 
     struct blk_cm_info cm_drt={0,0};
     NonEmptyZoneCnt = extractNonEmptyZoneId(); // >< #ugly way.
     if(NonEmptyZoneCnt == 0)
@@ -627,14 +626,15 @@ redefineOpenZones()
             OpenZoneSet[OpenZoneCnt] = zone->zoneId;
             OpenZoneCnt++;
 
-            cm_drt.num_OODblks += zone->OOD_num;
-            cm_drt.num_totalblks += zone->pagecnt_dirty;
+            cm_drt.num_OODblks = zone->OOD_num;
+            cm_drt.num_totalblks = zone->pagecnt_dirty;
+            cost_ret += CM_Alpha.Cost_Dirty(blk_cm_info_drt);
         }
         else if(zone->activate_after_n_cycles > 0)
             //info("PAUL FILTERS A REPEAT ZONE.");
         i++;
     }
-    return cm_drt;
+    return cost_ret;
 }
 
 static int
