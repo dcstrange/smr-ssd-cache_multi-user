@@ -77,7 +77,7 @@ typedef enum EvictPhrase_t
     EP_Reset
 } EvictPhrase_t;
 static EvictPhrase_t WhoEvict_Now, WhoEvict_Before; // Used to mark which type (r/w) of blocks should be evict in the [alpha] costmodel. (-1,clean), (1, dirty), (0, unknown)
-static int NumEvict_thistime_apprx = NBLOCK_SSD_CACHE/10;
+int NumEvict_thistime_apprx = NBLOCK_SSD_CACHE/10;
 
 /** Cost Model(alpha) **/
 struct COSTMODEL_Alpha
