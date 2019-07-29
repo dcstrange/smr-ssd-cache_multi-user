@@ -293,7 +293,6 @@ FLAG_EVICT_CLEAN:
 
     if(CleanCtrl.pagecnt_clean == 0 || (Num_evict_clean_cycle >= NumEvict_thistime_apprx)){
         Num_evict_clean_cycle = 0;
-        NumEvict_thistime_apprx = 0;
         WhoEvict_Now = EP_Reset;
     }
     return evict_cnt;
@@ -324,7 +323,6 @@ FLAG_EVICT_DIRTYZONE:
         printf(">> Output of last Cycle: clean:%ld, dirty:%ld\n",Num_evict_clean_cycle,Num_evict_dirty_cycle);
 
         Num_evict_dirty_cycle = 0;
-        NumEvict_thistime_apprx = 0;
         Cycle_Progress = 0;
         WhoEvict_Now = EP_Reset;
     }
@@ -371,12 +369,10 @@ static EvictPhrase_t run_cm_alpha()
         usr_error("paul.c: alpha costmodel found the cost og dirty and clean are both -1");
 
     if(cost_cln < cost_drt){
-        NumEvict_thistime_apprx = blk_cm_info_cln.num_totalblks;
         printf("~CLEAN\n\n");
         return EP_Clean;
     }
     else{
-        NumEvict_thistime_apprx = blk_cm_info_drt.num_totalblks;
         printf("~DIRTY\n\n");
         return EP_Dirty;
     }
