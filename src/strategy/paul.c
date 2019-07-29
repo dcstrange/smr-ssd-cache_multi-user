@@ -85,7 +85,7 @@ struct COSTMODEL_Alpha
     microsecond_t Lat_SMR_read;
     microsecond_t (*FX_WA) (int blkcnt);
 
-    double (*Cost_Dirty) (struct blk_cm_info dirty);
+    double (*Cost_Dirty) (struct blk_cm_info * dirty, int num);
     double (*Cost_Clean) (struct blk_cm_info clean);
 };
 static microsecond_t costmodel_fx_wa(int blkcnt);
@@ -598,7 +598,7 @@ pause_and_score()
 static double redefineOpenZones()
 {
     double cost_ret = 0; 
-    struct blk_cm_info cm_drt={0,0};
+    struct blk_cm_info cm_drt[100];
     NonEmptyZoneCnt = extractNonEmptyZoneId(); // >< #ugly way.
     if(NonEmptyZoneCnt == 0)
         usr_error("There are no zone for open.");
@@ -610,7 +610,7 @@ static double redefineOpenZones()
         max_n_zones = 1;  // This is for Emulation on small traces, some of their fifo size are lower than a zone size.
 
     OpenZoneCnt = 0;
-    long i = 0;
+    long i = 0, k = 0;
     while(OpenZoneCnt < max_n_zones && i < NonEmptyZoneCnt)
     {
         ZoneCtrl_pual* zone = ZoneCtrl_pualArray + ZoneSortArray[i];
@@ -622,14 +622,16 @@ static double redefineOpenZones()
             OpenZoneSet[OpenZoneCnt] = zone->zoneId;
             OpenZoneCnt++;
 
-            cm_drt.num_OODblks = zone->OOD_num;
-            cm_drt.num_totalblks = zone->pagecnt_dirty;
-            cost_ret += CM_Alpha.Cost_Dirty(cm_drt);
+            cm_drt[k].num_OODblks = zone->OOD_num;
+            cm_drt[k].num_totalblks = zone->pagecnt_dirty;
+            k++;
         }
         else if(zone->activate_after_n_cycles > 0)
             //info("PAUL FILTERS A REPEAT ZONE.");
         i++;
     }
+
+    cost_ret = CM_Alpha.Cost_Dirty(cm_drt, OpenZoneCnt);
     return cost_ret;
 }
 
@@ -685,9 +687,18 @@ static microsecond_t costmodel_fx_wa(int blkcnt){
     microsecond_t lat_for_blkcnt = 728*blkcnt + 435833; // F(blkcnt) = RMW + k*blkcnt; <Regression function of actual test results>
     return lat_for_blkcnt;
 }
-static double costmodel_evaDirty_alpha(struct blk_cm_info dirty){
-    double evaDirty = (double)CM_Alpha.FX_WA(dirty.num_totalblks) / (dirty.num_OODblks+1);
-    return evaDirty;
+static double costmodel_evaDirty_alpha(struct blk_cm_info * dirty, int num){
+    if(num <= 0)
+        return -1;
+    double evaDirty = 0;
+    int ood_num = 0;
+    int i = 0;
+    while(i < num){
+        evaDirty += (double)CM_Alpha.FX_WA(dirty[i].num_totalblks);
+        ood_num += dirty[i].num_OODblks;
+    }
+    
+    return evaDirty / (ood_num + 1);
 }
 static double costmodel_evaClean_alpha(struct blk_cm_info clean){
     double evaClean = \
