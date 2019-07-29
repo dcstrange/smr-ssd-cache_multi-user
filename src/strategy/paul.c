@@ -77,7 +77,7 @@ typedef enum EvictPhrase_t
     EP_Reset
 } EvictPhrase_t;
 static EvictPhrase_t WhoEvict_Now, WhoEvict_Before; // Used to mark which type (r/w) of blocks should be evict in the [alpha] costmodel. (-1,clean), (1, dirty), (0, unknown)
-static int NumEvict_thistime_apprx = 100000;
+static int NumEvict_thistime_apprx = 5000;
 
 /** Cost Model(alpha) **/
 struct COSTMODEL_Alpha
@@ -268,10 +268,12 @@ LogOut_PAUL(long * out_despid_array, int max_n_batch, enum_t_vict suggest_type)
 
         if(WhoEvict_Now == EP_Clean)
         { // clean
+            WhoEvict_Now = EP_Reset;
             goto FLAG_EVICT_CLEAN;
         }
         else if(WhoEvict_Now == EP_Dirty)
         { //dirty
+            WhoEvict_Now = EP_Reset;
             goto FLAG_EVICT_DIRTYZONE;
         }
     }
@@ -338,37 +340,25 @@ static EvictPhrase_t run_cm_alpha()
     if(STT->incache_n_dirty == 0 || STT->incache_n_clean == 0)
         usr_error("Illegal to run CostModel:alpha");
 
-    struct blk_cm_info blk_cm_info_drt={0,0}, blk_cm_info_cln={0,0};
-    double cost_drt = -1, cost_cln = -1;
-
     /* Get number of dirty OODs. NOTICE! Have to get the dirty first and then the clean, the order cannot be reverted.*/
-    cost_drt = redefineOpenZones();
+    if((CurEvictZoneSeq = get_FrozenOpZone_Seq()) < 0)
+        redefineOpenZones();
+    
+    ZoneCtrl_pual* evictZone = ZoneCtrl_pualArray + OpenZoneSet[CurEvictZoneSeq];
+    Dscptr_paul* frozenDesp = GlobalDespArray + evictZone->tail;
+    unsigned long stamp_dirty = frozenDesp->stamp;
 
     /* Get number of clean OODs. NOTICE! Have to get the dirty first and then the clean, the order cannot be reverted. */
-    blkcnt_t despId_cln = CleanCtrl.tail;
-    Dscptr_paul* cleandesp;
-    int cnt = 0;
-    while(cnt < NumEvict_thistime_apprx && despId_cln >= 0)
-    {
-        cleandesp = GlobalDespArray + despId_cln;
-        if(cleandesp->stamp < OODstamp){
-            blk_cm_info_cln.num_OODblks ++;
-        }
-        despId_cln = cleandesp->pre;
-        cnt ++;
-    }
-    blk_cm_info_cln.num_totalblks = cnt;
+    Dscptr_paul* cleandesp = GlobalDespArray + CleanCtrl.tail;
+    unsigned long stamp_clean = cleandesp->stamp;
 
-    cost_cln = CM_Alpha.Cost_Clean(blk_cm_info_cln);
 
-    printf(">>>[NEWCYCLE] CostModel(Alpha) C:%1f vs. D:%1f<<<\n", cost_cln, cost_drt);
+    printf(">>>[NEWCYCLE] timestamp C:%lu vs. D:%lu<<<\n", stamp_clean, stamp_dirty);
     printf(">>>[NEWCYCLE] Cached Number C:%lu vs. D:%lu<<<\n", STT->incache_n_clean, STT->incache_n_dirty);
 
     /* Compare. */
-    if(cost_drt == -1 && cost_cln == -1)
-        usr_error("paul.c: alpha costmodel found the cost og dirty and clean are both -1");
 
-    if(cost_cln < cost_drt){
+    if(stamp_clean < stamp_dirty){
         printf("~CLEAN\n\n");
         return EP_Clean;
     }
@@ -556,7 +546,7 @@ extractNonEmptyZoneId()
         }
         zoneId++;
 
-        if(WhoEvict_Before == 1 && zone->activate_after_n_cycles > 0)
+        if(zone->activate_after_n_cycles > 0)
             zone->activate_after_n_cycles --;
     }
     return cnt;
@@ -661,23 +651,6 @@ get_FrozenOpZone_Seq()
 
     return frozenSeq;   // If return value <= 0, it means 1. here already has no any dirty block in the selected bands. 2. here has not started the cycle.
 }
-
-// static int random_pick(float weight1, float weight2, float obey)
-// {
-//     //return (weight1 < weight2) ? 1 : 2;
-//     // let weight as the standard, set as 1,
-//     float inc_times = (weight2 / weight1) - 1;
-//     inc_times *= obey;
-
-//     float de_point = 1000 * (1 / (2 + inc_times));
-// //    rand_init();
-//     int token = rand() % 1000;
-
-//     if(token < de_point)
-//         return 1;
-//     return 2;
-// }
-
 
 /**************
  * Cost Model *
