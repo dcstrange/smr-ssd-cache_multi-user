@@ -362,8 +362,8 @@ static EvictPhrase_t run_cm_alpha()
 
     cost_cln = CM_Alpha.Cost_Clean(blk_cm_info_cln);
 
-
-    printf(">>>[NEWCYCLE] CostModel(Alpha) C:%1f vs. D:%1f<<<", cost_cln, cost_drt);
+    printf(">>>[NEWCYCLE] CostModel(Alpha) C:%1f vs. D:%1f<<<\n", cost_cln, cost_drt);
+    printf(">>>[NEWCYCLE] Cached Number C:%lu vs. D:%lu<<<\n", STT->incache_n_clean, STT->incache_n_dirty);
 
     /* Compare. */
     if(cost_drt == -1 && cost_cln == -1)
