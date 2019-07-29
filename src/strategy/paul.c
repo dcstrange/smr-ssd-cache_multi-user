@@ -65,7 +65,7 @@ struct blk_cm_info
 
 
 /** PAUL**/
-static struct blk_cm_info redefineOpenZones();
+static double redefineOpenZones();
 static int get_FrozenOpZone_Seq();
 static int random_pick (float weight1, float weight2, float obey);
 static int restart_cm_alpha();
@@ -77,7 +77,7 @@ typedef enum EvictPhrase_t
     EP_Reset
 } EvictPhrase_t;
 static EvictPhrase_t WhoEvict_Now, WhoEvict_Before; // Used to mark which type (r/w) of blocks should be evict in the [alpha] costmodel. (-1,clean), (1, dirty), (0, unknown)
-static int NumEvict_thistime_apprx = -1;
+static int NumEvict_thistime_apprx;
 
 /** Cost Model(alpha) **/
 struct COSTMODEL_Alpha
@@ -146,6 +146,7 @@ Init_PUAL()
     CleanCtrl.head = CleanCtrl.tail = -1;
 
     WhoEvict_Now = WhoEvict_Before = EP_Reset;
+    NumEvict_thistime_apprx = NBLOCK_SSD_CACHE/10;
     return 0;
 }
 
@@ -291,9 +292,8 @@ FLAG_EVICT_CLEAN:
         evict_cnt ++;
     }
 
-    if(CleanCtrl.pagecnt_clean == 0 || (NumEvict_thistime_apprx > 0 && Num_evict_clean_cycle >= NumEvict_thistime_apprx)){
+    if(CleanCtrl.pagecnt_clean == 0 || (Num_evict_clean_cycle >= NumEvict_thistime_apprx)){
         Num_evict_clean_cycle = 0;
-        NumEvict_thistime_apprx = 0;
         WhoEvict_Now = EP_Reset;
     }
     return evict_cnt;
@@ -324,7 +324,6 @@ FLAG_EVICT_DIRTYZONE:
         printf(">> Output of last Cycle: clean:%ld, dirty:%ld\n",Num_evict_clean_cycle,Num_evict_dirty_cycle);
 
         Num_evict_dirty_cycle = 0;
-        NumEvict_thistime_apprx = 0;
         Cycle_Progress = 0;
         WhoEvict_Now = EP_Reset;
     }
@@ -344,14 +343,13 @@ static EvictPhrase_t run_cm_alpha()
     double cost_drt = -1, cost_cln = -1;
 
     /* Get number of dirty OODs. NOTICE! Have to get the dirty first and then the clean, the order cannot be reverted.*/
-    blk_cm_info_drt = redefineOpenZones();
-    cost_drt = CM_Alpha.Cost_Dirty(blk_cm_info_drt);
+    cost_drt = redefineOpenZones();
 
     /* Get number of clean OODs. NOTICE! Have to get the dirty first and then the clean, the order cannot be reverted. */
     blkcnt_t despId_cln = CleanCtrl.tail;
     Dscptr_paul* cleandesp;
     int cnt = 0;
-    while(cnt < blk_cm_info_drt.num_totalblks && despId_cln >= 0)
+    while(cnt < NumEvict_thistime_apprx && despId_cln >= 0)
     {
         cleandesp = GlobalDespArray + despId_cln;
         if(cleandesp->stamp < OODstamp){
@@ -372,12 +370,10 @@ static EvictPhrase_t run_cm_alpha()
         usr_error("paul.c: alpha costmodel found the cost og dirty and clean are both -1");
 
     if(cost_cln < cost_drt){
-        NumEvict_thistime_apprx = blk_cm_info_cln.num_totalblks;
         printf("~CLEAN\n\n");
         return EP_Clean;
     }
     else{
-        NumEvict_thistime_apprx = blk_cm_info_drt.num_totalblks;
         printf("~DIRTY\n\n");
         return EP_Dirty;
     }
@@ -600,9 +596,9 @@ pause_and_score()
 }
 
 
-static struct blk_cm_info
-redefineOpenZones()
+static double redefineOpenZones()
 {
+    double cost_ret = 0; 
     struct blk_cm_info cm_drt={0,0};
     NonEmptyZoneCnt = extractNonEmptyZoneId(); // >< #ugly way.
     if(NonEmptyZoneCnt == 0)
@@ -627,14 +623,15 @@ redefineOpenZones()
             OpenZoneSet[OpenZoneCnt] = zone->zoneId;
             OpenZoneCnt++;
 
-            cm_drt.num_OODblks += zone->OOD_num;
-            cm_drt.num_totalblks += zone->pagecnt_dirty;
+            cm_drt.num_OODblks = zone->OOD_num;
+            cm_drt.num_totalblks = zone->pagecnt_dirty;
+            cost_ret += CM_Alpha.Cost_Dirty(cm_drt);
         }
         else if(zone->activate_after_n_cycles > 0)
             //info("PAUL FILTERS A REPEAT ZONE.");
         i++;
     }
-    return cm_drt;
+    return cost_ret;
 }
 
 static int
@@ -690,7 +687,7 @@ static microsecond_t costmodel_fx_wa(int blkcnt){
     return lat_for_blkcnt;
 }
 static double costmodel_evaDirty_alpha(struct blk_cm_info dirty){
-    double evaDirty = CM_Alpha.FX_WA(dirty.num_totalblks) / (dirty.num_OODblks+1);
+    double evaDirty = (double)CM_Alpha.FX_WA(dirty.num_totalblks) / (dirty.num_OODblks+1);
     return evaDirty;
 }
 static double costmodel_evaClean_alpha(struct blk_cm_info clean){
