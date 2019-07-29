@@ -89,7 +89,7 @@ struct COSTMODEL_Alpha
     double (*Cost_Clean) (struct blk_cm_info clean);
 };
 static microsecond_t costmodel_fx_wa(int blkcnt);
-static double costmodel_evaDirty_alpha(struct blk_cm_info dirty);
+static double costmodel_evaDirty_alpha(struct blk_cm_info * dirty, int num);
 static double costmodel_evaClean_alpha(struct blk_cm_info clean);
 static struct COSTMODEL_Alpha CM_Alpha = {
     .Lat_SMR_read = 14000, //14ms per read
