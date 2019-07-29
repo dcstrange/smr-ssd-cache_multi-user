@@ -77,7 +77,7 @@ typedef enum EvictPhrase_t
     EP_Reset
 } EvictPhrase_t;
 static EvictPhrase_t WhoEvict_Now, WhoEvict_Before; // Used to mark which type (r/w) of blocks should be evict in the [alpha] costmodel. (-1,clean), (1, dirty), (0, unknown)
-static int NumEvict_thistime_apprx;
+static int NumEvict_thistime_apprx = 100000;
 
 /** Cost Model(alpha) **/
 struct COSTMODEL_Alpha
@@ -146,7 +146,6 @@ Init_PUAL()
     CleanCtrl.head = CleanCtrl.tail = -1;
 
     WhoEvict_Now = WhoEvict_Before = EP_Reset;
-    NumEvict_thistime_apprx = NBLOCK_SSD_CACHE/10;
     return 0;
 }
 
@@ -362,8 +361,8 @@ static EvictPhrase_t run_cm_alpha()
 
     cost_cln = CM_Alpha.Cost_Clean(blk_cm_info_cln);
 
-
-    printf(">>>[NEWCYCLE] CostModel(Alpha) C:%1f vs. D:%1f<<<", cost_cln, cost_drt);
+    printf(">>>[NEWCYCLE] CostModel(Alpha) C:%1f vs. D:%1f<<<\n", cost_cln, cost_drt);
+    printf(">>>[NEWCYCLE] Cached Number C:%lu vs. D:%lu<<<\n", STT->incache_n_clean, STT->incache_n_dirty);
 
     /* Compare. */
     if(cost_drt == -1 && cost_cln == -1)
