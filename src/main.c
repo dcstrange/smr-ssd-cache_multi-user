@@ -169,7 +169,11 @@ main(int argc, char** argv)
         fd_smr_part = open(simu_smr_smr_device, O_RDWR | O_DIRECT | O_FSYNC);
         printf("Simulator Device: fifo part=%d, smr part=%d\n",fd_fifo_part,fd_smr_part);
         if(fd_fifo_part<0 || fd_smr_part<0)
-            exit(EXIT_FAILURE);
+        {
+            #ifndef SIMU_NO_DISK_IO
+            usr_error("No emulator smr devices.");
+            #endif
+        }
         InitSimulator();
         #endif
     }
