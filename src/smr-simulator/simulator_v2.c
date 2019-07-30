@@ -347,7 +347,7 @@ flushFIFO()
     if((returnCode) != thisBandSize)
     {
         printf("[ERROR] flushFIFO():---------read from smr: fd=%d, errorcode=%d, offset=%lu\n",
-               fd_smr_part, returnCode, band_offset);
+               fd_smr_part, returnCode, thisBandOff);
         exit(-1);
     }
     _TimerLap(&tv_stop);
@@ -372,7 +372,7 @@ flushFIFO()
         /* If the block belongs the same band with the header of fifo. */
         if (curDesp->isValid && (curDesp->tag.offset - thisBandOff) <= thisBandSize) 
         {
-            off_t offset_inband = curDesp->tag.offset - thisBandOff
+            off_t offset_inband = curDesp->tag.offset - thisBandOff;
 #ifdef SIMULATOR_AIO
             struct aiocb* aio_n = aiolist + aio_read_cnt;
             aio_n->aio_fildes = fd_fifo_part;
