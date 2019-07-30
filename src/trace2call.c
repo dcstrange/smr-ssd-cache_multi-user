@@ -84,7 +84,7 @@ trace_to_iocall(char *trace_file_path, int isWriteOnly,off_t startLBA)
     _TimerLap(&tv_trace_start);
     static int req_cnt = 0;
 
-    blkcnt_t total_n_req = isWriteOnly ? (blkcnt_t)REPORT_INTERVAL*500*10 : REPORT_INTERVAL*500*10;
+    blkcnt_t total_n_req = isWriteOnly ? (blkcnt_t)REPORT_INTERVAL*500*5 : REPORT_INTERVAL*500*5;
     blkcnt_t skiprows = 0; //isWriteOnly ?  50000000 : 100000000;
 
 
@@ -95,7 +95,7 @@ trace_to_iocall(char *trace_file_path, int isWriteOnly,off_t startLBA)
         exit(EXIT_FAILURE);
     }
 
-    while (!feof(trace) && STT->reqcnt_s < total_n_req) // 84340000
+    while (!feof(trace) && STT->reqcnt_s < total_n_req)
     {
 
         returnCode = fscanf(trace, "%c %d %lu\n", &action, &i, &offset);
@@ -143,15 +143,8 @@ trace_to_iocall(char *trace_file_path, int isWriteOnly,off_t startLBA)
         {
             STT->reqcnt_w ++;
             STT->reqcnt_s ++;
-        //For simulate ten processes running
-//            write_block(offset, ssd_buffer);
-
-//            int i = 0;
-//            for(1; i < 10; i ++)
-//            {
-//                offset += (i * 20000000 * BLKSZ);
             write_block(offset, ssd_buffer);
-//            }
+
             #ifdef HRC_PROCS_N
             int i;
             for(i = 0; i < HRC_PROCS_N; i++)
@@ -170,12 +163,8 @@ trace_to_iocall(char *trace_file_path, int isWriteOnly,off_t startLBA)
         {
             STT->reqcnt_r ++;
             STT->reqcnt_s ++;
-//            int i = 0;
-//            for(1; i < 10; i ++)
-//            {
-//                offset += (i * 20000000 * BLKSZ);
-                read_block(offset,ssd_buffer);
-//            }
+
+            read_block(offset,ssd_buffer);
             #ifdef HRC_PROCS_N
             int i;
             for(i = 0; i < HRC_PROCS_N; i++)
@@ -213,9 +202,10 @@ trace_to_iocall(char *trace_file_path, int isWriteOnly,off_t startLBA)
             report_ontime();
             if(STT->reqcnt_s % ((blkcnt_t)REPORT_INTERVAL*500) == 0){
                 reportCurInfo();
-                resetStatics();
+//                resetStatics();
                 #ifdef SIMULATION
                 Emu_PrintStatistic();
+//                Emu_ResetStatisic();
                 #endif
             }
         }
@@ -325,6 +315,12 @@ static void resetStatics()
     STT->load_ssd_blocks = 0;
     STT->flush_ssd_blocks = 0;
     STT->flush_hdd_blocks = 0;
+    STT->flush_clean_blocks = 0;
+    STT->load_hdd_blocks = 0;
+
+
+    STT->reqcnt_r = STT->reqcnt_w = 0; 
+    STT->hitnum_s,STT->hitnum_r,STT->hitnum_w = 0;
 
     STT->time_read_hdd = 0.0;
     STT->time_write_hdd = 0.0;

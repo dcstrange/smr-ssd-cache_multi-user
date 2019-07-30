@@ -370,8 +370,9 @@ flushFIFO()
         long nextPos = (curDesp->despId + 1) % (NBLOCK_SMR_FIFO + 1);
 
         /* If the block belongs the same band with the header of fifo. */
-        if (curDesp->isValid && (curDesp->tag.offset - thisBandOff) <= thisBandSize) 
+        if (curDesp->isValid && thisBandOff <= curDesp->tag.offset && curDesp->tag.offset <=  thisBandOff + thisBandSize) 
         {
+	    dirty_n_inBand++;
             off_t offset_inband = curDesp->tag.offset - thisBandOff;
 #ifdef SIMULATOR_AIO
             struct aiocb* aio_n = aiolist + aio_read_cnt;
@@ -384,7 +385,7 @@ flushFIFO()
             aio_read_cnt++;
 #else
             _TimerLap(&tv_start);
-            returnCode = DISK_READ(fd_fifo_part, BandBuffer + offset_inband * BLKSZ, BLKSZ, curPos * BLKSZ + OFF_FIFO);
+            returnCode = DISK_READ(fd_fifo_part, BandBuffer + offset_inband, BLKSZ, curPos * BLKSZ + OFF_FIFO);
             if (returnCode < 0)
             {
                 printf("[ERROR] flushFIFO():-------read from PB: fd=%d, errorcode=%d, offset=%lu\n", fd_fifo_part, returnCode, curPos * BLKSZ);
@@ -394,7 +395,6 @@ flushFIFO()
             simu_time_read_fifo += TimerInterval_SECOND(&tv_start,&tv_stop);
 #endif // SIMULATOR_AIO
             /* clean the meta data */
-            dirty_n_inBand++;
             unsigned long hash_code = ssdtableHashcode(curDesp->tag);
             ssdtableDelete(curDesp->tag, hash_code);
 
@@ -449,7 +449,6 @@ flushFIFO()
 
     wtrAmp = (double)thisBandSize / (dirty_n_inBand * BLKSZ);
     STT->wtrAmp_cur = wtrAmp;
-    STT->WA_sum += wtrAmp;
     STT->n_RMW ++;
 
     char log[256];
@@ -496,13 +495,14 @@ void Emu_PrintStatistic()
     printf("Block/Band Count:\n");
     printf("Read FIFO:\t%ld\nWrite FIFO:\t%ld\nFIFO Collect:\t%ld\nRead SMR:\t%ld\nFIFO Write HIT:\t%ld\n",simu_n_read_fifo, simu_n_write_fifo,simu_n_collect_fifo, simu_n_read_smr, simu_n_fifo_write_HIT);
     printf("Read Bands:\t%ld\nFlush Bands:\t%ld\nFlush BandSize:\t%ld\n",simu_read_smr_bands, simu_flush_bands, simu_flush_band_size);
-    printf("WA AVG:\t%2f\n",(float)(simu_flush_band_size / BLKSZ) / STT->flush_hdd_blocks);
+    printf("WA AVG:\t%2f\n",(float)(simu_flush_band_size / BLKSZ) / simu_n_collect_fifo);
 }
 
 void Emu_ResetStatisic()
 {
     simu_n_read_fifo = simu_n_write_fifo = simu_n_collect_fifo = simu_n_read_smr = simu_n_fifo_write_HIT =
-    simu_read_smr_bands = simu_flush_bands = simu_flush_band_size = 0}
+    simu_read_smr_bands = simu_flush_bands = simu_flush_band_size = 0;
+}
 
 void CloseSMREmu()
 {
