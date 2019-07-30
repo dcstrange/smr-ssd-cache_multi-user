@@ -84,7 +84,7 @@ trace_to_iocall(char *trace_file_path, int isWriteOnly,off_t startLBA)
     _TimerLap(&tv_trace_start);
     static int req_cnt = 0;
 
-    blkcnt_t total_n_req = isWriteOnly ? (blkcnt_t)REPORT_INTERVAL*500*10 : REPORT_INTERVAL*500*10;
+    blkcnt_t total_n_req = isWriteOnly ? (blkcnt_t)REPORT_INTERVAL*500*3 : REPORT_INTERVAL*500*3;
     blkcnt_t skiprows = 0; //isWriteOnly ?  50000000 : 100000000;
 
 
@@ -213,7 +213,7 @@ trace_to_iocall(char *trace_file_path, int isWriteOnly,off_t startLBA)
             report_ontime();
             if(STT->reqcnt_s % ((blkcnt_t)REPORT_INTERVAL*500) == 0){
                 reportCurInfo();
-                resetStatics();
+                //resetStatics();
                 #ifdef SIMULATION
                 Emu_PrintStatistic();
                 Emu_ResetStatisic();
