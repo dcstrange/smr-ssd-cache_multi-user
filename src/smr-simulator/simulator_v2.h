@@ -31,6 +31,7 @@ extern int  fd_smr_part;
 extern void InitSimulator();
 extern int simu_smr_read(char *buffer, size_t size, off_t offset);
 extern int simu_smr_write(char *buffer, size_t size, off_t offset);
-extern void PrintSimulatorStatistic();
+extern void Emu_PrintStatistic();
+extern void Emu_ResetStatisic();
 extern void CloseSMREmu();
 #endif

@@ -120,7 +120,7 @@ trace_to_iocall(char *trace_file_path, int isWriteOnly,off_t startLBA)
         if(!isFullSSDcache && (STT->flush_clean_blocks + STT->flush_hdd_blocks) > 0)
         {
             reportCurInfo();
-            resetStatics();        // Because we do not care about the statistic while the process of filling SSD cache.
+            resetStatics();        // Reset the statistics of warming phrase, cuz we don't care.
             isFullSSDcache = 1;
         }
 #ifdef R3BALANCER_ON
@@ -210,8 +210,14 @@ trace_to_iocall(char *trace_file_path, int isWriteOnly,off_t startLBA)
         if (STT->reqcnt_s > 0 && STT->reqcnt_s % REPORT_INTERVAL == 0)
         {
             report_ontime();
-            if(STT->reqcnt_s % ((blkcnt_t)REPORT_INTERVAL*500) == 0)
+            if(STT->reqcnt_s % ((Œblkcnt_t)REPORT_INTERVAL*500) == 0){
                 reportCurInfo();
+                resetStatics();
+                #ifdef SIMULATION
+                Emu_PrintStatistic();
+                Emu_ResetStatisic();
+                #endif
+            }
         }
         //ResizeCacheUsage();
     }
@@ -307,7 +313,7 @@ static void report_ontime()
            STT->reqcnt_s, STT->reqcnt_r, STT->reqcnt_w, STT->hitnum_s, STT->hitnum_r, STT->flush_ssd_blocks, STT->flush_hdd_blocks);
         _TimerLap(&tv_trace_end);
         double timecost = Mirco2Sec(TimerInterval_MICRO(&tv_trace_start,&tv_trace_end));
-        printf("current run time: %d\n",timecost);
+        printf("current run time: %0f\n",timecost);
 }
 
 static void resetStatics()
