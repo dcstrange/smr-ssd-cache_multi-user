@@ -438,7 +438,7 @@ flushFIFO()
     returnCode = DISK_WRITE(fd_smr_part, BandBuffer, thisBandSize, thisBandOff);
     if (returnCode < thisBandSize)
     {
-        printf("[ERROR] flushFIFO():-------write to smr: fd=%d, errorcode=%d, offset=%lu\n", fd_smr_part, returnCode, band_offset);
+        printf("[ERROR] flushFIFO():-------write to smr: fd=%d, errorcode=%d, offset=%lu\n", fd_smr_part, returnCode, thisBandOff);
         exit(-1);
     }
     _TimerLap(&tv_stop);
