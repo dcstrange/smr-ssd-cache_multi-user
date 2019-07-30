@@ -496,15 +496,13 @@ void Emu_PrintStatistic()
     printf("Block/Band Count:\n");
     printf("Read FIFO:\t%ld\nWrite FIFO:\t%ld\nFIFO Collect:\t%ld\nRead SMR:\t%ld\nFIFO Write HIT:\t%ld\n",simu_n_read_fifo, simu_n_write_fifo,simu_n_collect_fifo, simu_n_read_smr, simu_n_fifo_write_HIT);
     printf("Read Bands:\t%ld\nFlush Bands:\t%ld\nFlush BandSize:\t%ld\n",simu_read_smr_bands, simu_flush_bands, simu_flush_band_size);
-    printf("WA AVG:\t%lf\n",(float)(simu_flush_band_size / BLKSZ) / STT->flush_hdd_blocks);
+    printf("WA AVG:\t%2f\n",(float)(simu_flush_band_size / BLKSZ) / STT->flush_hdd_blocks);
 }
 
 void Emu_ResetStatisic()
 {
     simu_n_read_fifo = simu_n_write_fifo = simu_n_collect_fifo = simu_n_read_smr = simu_n_fifo_write_HIT =
-    simu_read_smr_bands = simu_flush_bands = simu_flush_band_size =
-    STT->flush_hdd_blocks = 0;
-}
+    simu_read_smr_bands = simu_flush_bands = simu_flush_band_size = 0}
 
 void CloseSMREmu()
 {
