@@ -205,7 +205,7 @@ main(int argc, char** argv)
     trace_to_iocall(tracefile[TraceId],WriteOnly,StartLBA);
 
 #ifdef SIMULATION
-    PrintSimulatorStatistic();
+    Emu_PrintStatistic();
     CloseSMREmu();
 #endif
     close(hdd_fd);

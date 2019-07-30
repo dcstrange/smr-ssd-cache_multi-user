@@ -484,19 +484,26 @@ getBandOffset(off_t blk_off)
     return 0;
 }
 
-void PrintSimulatorStatistic()
+void Emu_PrintStatistic()
 {
     printf("----------------SIMULATOR------------\n");
+#ifndef SIMU_NO_DISK_IO
     printf("Time:\n");
     printf("Read FIFO:\t%lf\nWrite FIFO:\t%lf\nRead SMR:\t%lf\nFlush SMR:\t%lf\n",simu_time_read_fifo, simu_time_write_fifo, simu_time_read_smr, simu_time_write_smr);
     printf("Total I/O:\t%lf\n", simu_time_read_fifo+simu_time_write_fifo+simu_time_read_smr+simu_time_write_smr);
     printf("FIFO Collect:\t%lf\n",simu_time_collectFIFO);
+#endif
     printf("Block/Band Count:\n");
     printf("Read FIFO:\t%ld\nWrite FIFO:\t%ld\nFIFO Collect:\t%ld\nRead SMR:\t%ld\nFIFO Write HIT:\t%ld\n",simu_n_read_fifo, simu_n_write_fifo,simu_n_collect_fifo, simu_n_read_smr, simu_n_fifo_write_HIT);
     printf("Read Bands:\t%ld\nFlush Bands:\t%ld\nFlush BandSize:\t%ld\n",simu_read_smr_bands, simu_flush_bands, simu_flush_band_size);
-
-
     printf("WA AVG:\t%lf\n",(float)(simu_flush_band_size / BLKSZ) / STT->flush_hdd_blocks);
+}
+
+void Emu_ResetStatisic()
+{
+    simu_n_read_fifo = simu_n_write_fifo = simu_n_collect_fifo = simu_n_read_smr = simu_n_fifo_write_HIT =
+    simu_read_smr_bands = simu_flush_bands = simu_flush_band_size =
+    STT->flush_hdd_blocks = 0;
 }
 
 void CloseSMREmu()
