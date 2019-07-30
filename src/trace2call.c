@@ -13,6 +13,7 @@
 #include "trace2call.h"
 #include "report.h"
 #include "strategy/strategies.h"
+#include "smr-smimulator/simulator_v2.h"
 
 //#include "/home/fei/git/Func-Utils/pipelib.h"
 #include "hrc.h"
@@ -210,7 +211,7 @@ trace_to_iocall(char *trace_file_path, int isWriteOnly,off_t startLBA)
         if (STT->reqcnt_s > 0 && STT->reqcnt_s % REPORT_INTERVAL == 0)
         {
             report_ontime();
-            if(STT->reqcnt_s % ((Œblkcnt_t)REPORT_INTERVAL*500) == 0){
+            if(STT->reqcnt_s % ((blkcnt_t)REPORT_INTERVAL*500) == 0){
                 reportCurInfo();
                 resetStatics();
                 #ifdef SIMULATION
