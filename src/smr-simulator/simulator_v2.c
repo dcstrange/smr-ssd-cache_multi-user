@@ -40,8 +40,8 @@ int  fd_smr_part;
 static FIFOCtrl global_fifo_ctrl;
 static FIFODesc* fifo_desp_array;
 static char* BandBuffer;
-static blksize_t NSMRBands = 194180;		// smr band cnt = 194180;
-static unsigned long BNDSZ = 36*1024*1024;      // bandsize = 36MB  (18MB~36MB)
+static blksize_t NSMRBands = 266600;		// smr band cnt = 266600; almost 8TB data size. 
+static unsigned long BNDSZ = 40*1000*1024;      // bandsize =40MB  (20MB~40MB)
 
 
 int ACCESS_FLAG = 1;
@@ -78,9 +78,8 @@ static int invalidDespInFIFO(FIFODesc* desp);
 #define isFIFOEmpty (global_fifo_ctrl.head == global_fifo_ctrl.tail)
 #define isFIFOFull  ((global_fifo_ctrl.tail + 1) % (NBLOCK_SMR_FIFO + 1) == global_fifo_ctrl.head)
 
-static unsigned long GetSMRActualBandSizeFromSSD(unsigned long offset);
-static unsigned long GetSMRBandNumFromSSD(unsigned long offset);
-static off_t GetSMROffsetInBandFromSSD(FIFODesc * ssd_hdr);
+static unsigned long getBandSize(unsigned long offset);
+static off_t getBandOffset(off_t blk_off); 
 
 /** AIO related for blocks collected in FIFO **/
 #define max_aio_count 6000
@@ -97,7 +96,7 @@ char log_wa_path[] = "/home/fei/devel/logs/log_wa";
 void InitSimulator()
 {
     /* initialliz related constants */
-    band_size_num = BNDSZ / 1024 / 1024 / 2 + 1;
+    band_size_num = (BNDSZ / 1024000) / 2 + 1;
     num_each_size = NSMRBands / band_size_num;
 
     global_fifo_ctrl.n_used = 0;
@@ -149,7 +148,7 @@ void InitSimulator()
     /* cgroup write fifo throttle */
 //    pid_t mypid = getpid();
 //    int bps_write = 1048576 * 11;
-//    char cmd_cg[512];
+//    char cmd_cg[512];c
 //
 //    int r;
 //    r = system("rm -rf /sys/fs/cgroup/blkio/smr_simu");
@@ -338,14 +337,14 @@ flushFIFO()
     FIFODesc* leader = fifo_desp_array + global_fifo_ctrl.head;
 
     /* Create a band-sized buffer for readind and flushing whole band bytes */
-    long		band_size = GetSMRActualBandSizeFromSSD(leader->tag.offset);
-    off_t		band_offset = leader->tag.offset - GetSMROffsetInBandFromSSD(leader) * BLKSZ;
+    long		thisBandSize = getBandSize(leader->tag.offset);
+    off_t       thisBandOff = getBandOffset(leader->tag.offset);
 
     /** R **/
     /* read whole band from smr to buffer*/
     _TimerLap(&tv_start);
-    returnCode = DISK_READ(fd_smr_part, BandBuffer, band_size, band_offset);
-    if((returnCode) != band_size)
+    returnCode = DISK_READ(fd_smr_part, BandBuffer, thisBandSize, thisBandOff);
+    if((returnCode) != thisBandSize)
     {
         printf("[ERROR] flushFIFO():---------read from smr: fd=%d, errorcode=%d, offset=%lu\n",
                fd_smr_part, returnCode, band_offset);
@@ -355,15 +354,8 @@ flushFIFO()
     simu_time_read_smr += TimerInterval_SECOND(&tv_start, &tv_stop);
     simu_read_smr_bands++;
 
-//    /* temp persistence whole band from buffer to smr*/
-//    if(DISK_WRITE(fd_fifo_part,BandBuffer,band_size,OFF_BAND_TMP_PERSISIT) != band_size && fsync(fd_fifo_part) < 0)
-//    {
-//        printf("[ERROR] flushFIFO():-------- temp persistence band: fd=%d, errorcode=%d, offset=%lu\n", fd_smr_part, returnCode, band_offset);
-//        exit(-1);
-//    }
     /** M **/
     /* Combine cached pages from FIFO which are belong to the same band */
-    unsigned long thisBandNum = GetSMRBandNumFromSSD(leader->tag.offset);
 
     /** ---------------DEBUG BLOCK 1----------------------- **/
     struct timeval	tv_collect_start, tv_collect_stop;
@@ -378,9 +370,9 @@ flushFIFO()
         long nextPos = (curDesp->despId + 1) % (NBLOCK_SMR_FIFO + 1);
 
         /* If the block belongs the same band with the header of fifo. */
-        if (curDesp->isValid && GetSMRBandNumFromSSD(curDesp->tag.offset) == thisBandNum)
+        if (curDesp->isValid && (curDesp->tag.offset - thisBandOff) <= thisBandSize) 
         {
-            off_t offset_inband = GetSMROffsetInBandFromSSD(curDesp);
+            off_t offset_inband = curDesp->tag.offset - thisBandOff
 #ifdef SIMULATOR_AIO
             struct aiocb* aio_n = aiolist + aio_read_cnt;
             aio_n->aio_fildes = fd_fifo_part;
@@ -443,8 +435,8 @@ flushFIFO()
     _TimerLap(&tv_start);
 
     /** W **/
-    returnCode = DISK_WRITE(fd_smr_part, BandBuffer, band_size, band_offset);
-    if (returnCode < 0)
+    returnCode = DISK_WRITE(fd_smr_part, BandBuffer, thisBandSize, thisBandOff);
+    if (returnCode < thisBandSize)
     {
         printf("[ERROR] flushFIFO():-------write to smr: fd=%d, errorcode=%d, offset=%lu\n", fd_smr_part, returnCode, band_offset);
         exit(-1);
@@ -453,9 +445,9 @@ flushFIFO()
 
     simu_time_write_smr += TimerInterval_SECOND(&tv_start,&tv_stop);
     simu_flush_bands++;
-    simu_flush_band_size += band_size;
+    simu_flush_band_size += thisBandSize;
 
-    wtrAmp = (double)band_size / (dirty_n_inBand * BLKSZ);
+    wtrAmp = (double)thisBandSize / (dirty_n_inBand * BLKSZ);
     STT->wtrAmp_cur = wtrAmp;
     STT->WA_sum += wtrAmp;
     STT->n_RMW ++;
@@ -466,47 +458,29 @@ flushFIFO()
 }
 
 static unsigned long
-GetSMRActualBandSizeFromSSD(unsigned long offset)
+getBandSize(unsigned long offset)
 {
     long		i, size, total_size = 0;
     for (i = 0; i < band_size_num; i++)
     {
-        size = BNDSZ / 2 + i * 1024 * 1024;
+        size = BNDSZ / 2 + i * 1024000;
         if (total_size + size * num_each_size >= offset)
             return size;
         total_size += size * num_each_size;
     }
     return 0;
 }
-
-static unsigned long
-GetSMRBandNumFromSSD(unsigned long offset)
+static off_t  
+getBandOffset(off_t blk_off)
 {
-    long		i, size, total_size = 0;
+    unsigned long i, size, total_size = 0;
     for (i = 0; i < band_size_num; i++)
     {
-        size = BNDSZ / 2 + i * 1024 * 1024;
-        if (total_size + size * num_each_size > offset)
-            return num_each_size * i + (offset - total_size) / size;
+        size = BNDSZ / 2 + i * 10241000;
+        if (total_size + size * num_each_size > blk_off)
+            return total_size + ((blk_off - total_size) / size) * size;
         total_size += size * num_each_size;
     }
-    return 0;
-}
-
-static off_t
-GetSMROffsetInBandFromSSD(FIFODesc * ssd_hdr)
-{
-    long		i, size, total_size = 0;
-    unsigned long	offset = ssd_hdr->tag.offset;
-
-    for (i = 0; i < band_size_num; i++)
-    {
-        size = BNDSZ / 2 + i * 1024 * 1024;
-        if (total_size + size * num_each_size > offset)
-            return (offset - total_size - (offset - total_size) / size * size) / BLKSZ;
-        total_size += size * num_each_size;
-    }
-
     return 0;
 }
 
