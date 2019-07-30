@@ -78,7 +78,7 @@ static int invalidDespInFIFO(FIFODesc* desp);
 #define isFIFOEmpty (global_fifo_ctrl.head == global_fifo_ctrl.tail)
 #define isFIFOFull  ((global_fifo_ctrl.tail + 1) % (NBLOCK_SMR_FIFO + 1) == global_fifo_ctrl.head)
 
-static unsigned long getBandSize(unsigned long offset);
+static unsigned long getBandSize(off_t offset);
 static off_t getBandOffset(off_t blk_off); 
 
 /** AIO related for blocks collected in FIFO **/
@@ -458,7 +458,7 @@ flushFIFO()
 }
 
 static unsigned long
-getBandSize(unsigned long offset)
+getBandSize(off_t offset)
 {
     long		i, size, total_size = 0;
     for (i = 0; i < band_size_num; i++)
@@ -476,7 +476,7 @@ getBandOffset(off_t blk_off)
     unsigned long i, size, total_size = 0;
     for (i = 0; i < band_size_num; i++)
     {
-        size = BNDSZ / 2 + i * 10241000;
+        size = BNDSZ / 2 + i * 1024000;
         if (total_size + size * num_each_size > blk_off)
             return total_size + ((blk_off - total_size) / size) * size;
         total_size += size * num_each_size;
