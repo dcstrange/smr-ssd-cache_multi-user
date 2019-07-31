@@ -84,11 +84,7 @@ trace_to_iocall(char *trace_file_path, int isWriteOnly,off_t startLBA)
     _TimerLap(&tv_trace_start);
     static int req_cnt = 0;
 
-<<<<<<< HEAD
-    blkcnt_t total_n_req = isWriteOnly ? (blkcnt_t)REPORT_INTERVAL*500*2 : REPORT_INTERVAL*500*2;
-=======
-    blkcnt_t total_n_req = isWriteOnly ? (blkcnt_t)REPORT_INTERVAL*500*5 : REPORT_INTERVAL*500*5;
->>>>>>> 9a82297e59d8a9f6a44dfd4344cb23d85b7b65d1
+    blkcnt_t total_n_req = isWriteOnly ? (blkcnt_t)REPORT_INTERVAL*500*3 : REPORT_INTERVAL*500*3;
     blkcnt_t skiprows = 0; //isWriteOnly ?  50000000 : 100000000;
 
 
