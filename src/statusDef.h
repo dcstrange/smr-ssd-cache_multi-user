@@ -18,7 +18,7 @@
 
 
 /** Emulator Related **/
-#define SIMULATION
+#undef SIMULATION
 #undef SIMULATOR_AIO
 #define SIMU_NO_DISK_IO
 

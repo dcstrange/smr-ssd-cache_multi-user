@@ -261,10 +261,10 @@ LogOut_PAUL(long * out_despid_array, int max_n_batch, enum_t_vict suggest_type)
     else if(suggest_type == ENUM_B_Any)
     {
         /* Here we use the Cost Model as the default strategy */
-        if(WhoEvict_Now == EP_Reset)
-        { // unknown. So the costmodel[alpha] runs!
+//       if(WhoEvict_Now == EP_Reset)
+//        { // unknown. So the costmodel[alpha] runs!
             WhoEvict_Now = WhoEvict_Before = run_cm_alpha();
-        }
+//        }
 
         if(WhoEvict_Now == EP_Clean)
         { // clean
@@ -293,7 +293,7 @@ FLAG_EVICT_CLEAN:
         evict_cnt ++;
     }
 
-    if(CleanCtrl.pagecnt_clean == 0 || (Num_evict_clean_cycle >= NumEvict_thistime_apprx)){
+    if(CleanCtrl.pagecnt_clean == 0){
         Num_evict_clean_cycle = 0;
         WhoEvict_Now = EP_Reset;
     }
@@ -324,7 +324,7 @@ FLAG_EVICT_DIRTYZONE:
         /* End and set the eviction type to *Unknown*. */
         printf(">> Output of last Cycle: clean:%ld, dirty:%ld\n",Num_evict_clean_cycle,Num_evict_dirty_cycle);
 
-        Num_evict_dirty_cycle = 0;
+        Num_evict_dirty_cycle = Num_evict_clean_cycle = 0;
         Cycle_Progress = 0;
         WhoEvict_Now = EP_Reset;
     }
@@ -354,17 +354,17 @@ static EvictPhrase_t run_cm_alpha()
     unsigned long stamp_clean = cleandesp->stamp;
 
 
-    printf(">>>[NEWCYCLE] timestamp C:%lu vs. D:%lu<<<\n", stamp_clean, stamp_dirty);
-    printf(">>>[NEWCYCLE] Cached Number C:%lu vs. D:%lu<<<\n", STT->incache_n_clean, STT->incache_n_dirty);
+    //printf(">>>[NEWCYCLE] timestamp C:%lu vs. D:%lu<<<\n", stamp_clean, stamp_dirty);
+    //printf(">>>[NEWCYCLE] Cached Number C:%lu vs. D:%lu<<<\n", STT->incache_n_clean, STT->incache_n_dirty);
 
     /* Compare. */
 
     if(stamp_clean < stamp_dirty){
-        printf("~CLEAN\n\n");
+//        printf("~CLEAN\n\n");
         return EP_Clean;
     }
     else{
-        printf("~DIRTY\n\n");
+//        printf("~DIRTY\n\n");
         return EP_Dirty;
     }
 }
@@ -501,21 +501,21 @@ move2CleanArrayHead(Dscptr_paul* desp)
 static void
 qsort_zone(long start, long end)
 {
-    long                i = start;
-    long                j = end;
+    long		i = start;
+    long		j = end;
 
     long S = ZoneSortArray[start];
     ZoneCtrl_pual* curCtrl = ZoneCtrl_pualArray + S;
-    unsigned long score = curCtrl->pagecnt_dirty; //<PAUL-alpha> curCtrl->OOD_num;
+    unsigned long score = curCtrl->OOD_num;
     while (i < j)
     {
-        while (!(ZoneCtrl_pualArray[ZoneSortArray[j]].pagecnt_dirty > score) && i<j)//<PAUL-alpha>
+        while (!(ZoneCtrl_pualArray[ZoneSortArray[j]].OOD_num > score) && i<j)
         {
             j--;
         }
         ZoneSortArray[i] = ZoneSortArray[j];
 
-        while (!(ZoneCtrl_pualArray[ZoneSortArray[i]].pagecnt_dirty < score) && i<j)//<PAUL-alpha>
+        while (!(ZoneCtrl_pualArray[ZoneSortArray[i]].OOD_num < score) && i<j)
         {
             i++;
         }
@@ -529,7 +529,6 @@ qsort_zone(long start, long end)
         qsort_zone(j + 1, end);
 }
 
-
 /*
   extract the non-empty zones and record them into the ZoneSortArray
  */
@@ -540,7 +539,8 @@ extractNonEmptyZoneId()
     while(zoneId < NZONES)
     {
         ZoneCtrl_pual* zone = ZoneCtrl_pualArray + zoneId;
-        if(zone->pagecnt_dirty > 0)
+        if(zone->pagecnt_dirty
+        > 0)
         {
             ZoneSortArray[cnt] = zoneId;
             cnt++;
@@ -565,6 +565,24 @@ pause_and_score()
     Dscptr_paul* desp;
     blkcnt_t n = 0;
 
+    OODstamp = StampGlobal - (long)(NBLOCK_SSD_CACHE * 0.8);
+    while(n < NonEmptyZoneCnt)
+    {
+        izone = ZoneCtrl_pualArray + ZoneSortArray[n];
+        izone->OOD_num = 0;
+
+        /* score each block of the non-empty zone */
+
+        blkcnt_t despId = izone->tail;
+        while(despId >= 0)
+        {
+            desp = GlobalDespArray + despId;
+            if(desp->stamp < OODstamp)
+                izone->OOD_num ++;
+            despId = desp->pre;
+        }
+        n++ ;
+    }
 }
 
 
@@ -591,7 +609,7 @@ static double redefineOpenZones()
         /* According to the RULE 2, zones which have already be in PB cannot be choosed into this cycle. */
         if(zone->activate_after_n_cycles == 0)
         {
- //           zone->activate_after_n_cycles = 2;  // Deactivate the zone for the next 2 cycles.
+            zone->activate_after_n_cycles = 2;  // Deactivate the zone for the next 2 cycles.
             OpenZoneSet[OpenZoneCnt] = zone->zoneId;
             OpenZoneCnt++;
 
@@ -604,7 +622,7 @@ static double redefineOpenZones()
         i++;
     }
 
-//    cost_ret = CM_Alpha.Cost_Dirty(cm_drt, OpenZoneCnt);
+    cost_ret = CM_Alpha.Cost_Dirty(cm_drt, OpenZoneCnt);
     return cost_ret;
 }
 
