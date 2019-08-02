@@ -217,7 +217,7 @@ start_new_cycle()
 {
     CycleID++;
     redefineOpenZones();
-
+    Cycle_Progress = 0;
     printf("-------------New Cycle!-----------\n");
     printf("Cycle ID [%ld], Non-Empty Zone_Cnt=%d, OpenZones_cnt=%d, CleanBlks=%ld(%0.2lf)\n",CycleID, NonEmptyZoneCnt, OpenZoneCnt,CleanCtrl.pagecnt_clean, (double)CleanCtrl.pagecnt_clean/NBLOCK_SSD_CACHE);
 
@@ -325,7 +325,6 @@ FLAG_EVICT_DIRTYZONE:
         printf(">> Output of last Cycle: clean:%ld, dirty:%ld\n",Num_evict_clean_cycle,Num_evict_dirty_cycle);
 
         Num_evict_dirty_cycle = Num_evict_clean_cycle = 0;
-        Cycle_Progress = 0;
         WhoEvict_Now = EP_Reset;
     }
 
@@ -342,8 +341,8 @@ static EvictPhrase_t run_cm_alpha()
 
     /* Get number of dirty OODs. NOTICE! Have to get the dirty first and then the clean, the order cannot be reverted.*/
     int zoneid;
-    if((zoneid = get_FrozenOpZone_Seq()) < 0)
-        redefineOpenZones();
+    if(Cycle_Progress >= Cycle_Length || (zoneid = get_FrozenOpZone_Seq()) < 0)
+        start_new_cycle();
     
     ZoneCtrl_pual* evictZone = ZoneCtrl_pualArray + OpenZoneSet[zoneid];
     Dscptr_paul* frozenDesp = GlobalDespArray + evictZone->tail;
