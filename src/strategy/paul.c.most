@@ -229,7 +229,6 @@ start_new_cycle()
 int
 LogOut_PAUL(long * out_despid_array, int max_n_batch, enum_t_vict suggest_type)
 {
-    OODstamp = StampGlobal - (NBLOCK_SSD_CACHE * 0.8);
     static int CurEvictZoneSeq;
     static int Num_evict_clean_cycle = 0, Num_evict_dirty_cycle = 0;
     int evict_cnt = 0;
@@ -269,12 +268,12 @@ LogOut_PAUL(long * out_despid_array, int max_n_batch, enum_t_vict suggest_type)
 
         if(WhoEvict_Now == EP_Clean)
         { // clean
-    //        WhoEvict_Now = EP_Reset;
+            WhoEvict_Now = EP_Reset;
             goto FLAG_EVICT_CLEAN;
         }
         else if(WhoEvict_Now == EP_Dirty)
         { //dirty
-      //      WhoEvict_Now = EP_Reset;
+            WhoEvict_Now = EP_Reset;
             goto FLAG_EVICT_DIRTYZONE;
         }
     }
@@ -295,8 +294,7 @@ FLAG_EVICT_CLEAN:
     }
 
     if(CleanCtrl.pagecnt_clean == 0 || (Num_evict_clean_cycle >= NumEvict_thistime_apprx)){
-        printf(">> Output of last Cycle[%ld]: clean:%ld, dirty:%ld\n",CycleID,Num_evict_clean_cycle,Num_evict_dirty_cycle);
-	Num_evict_clean_cycle = 0;
+        Num_evict_clean_cycle = 0;
         WhoEvict_Now = EP_Reset;
     }
     return evict_cnt;
@@ -322,9 +320,9 @@ FLAG_EVICT_DIRTYZONE:
     }
 
     /* If end the dirty eviction */
-    if((CurEvictZoneSeq = get_FrozenOpZone_Seq()) < 0){
+    if(Cycle_Progress >= Cycle_Length || (CurEvictZoneSeq = get_FrozenOpZone_Seq()) < 0){
         /* End and set the eviction type to *Unknown*. */
-        printf(">> Output of last Cycle[%ld]: clean:%ld, dirty:%ld\n",CycleID,Num_evict_clean_cycle,Num_evict_dirty_cycle);
+        printf(">> Output of last Cycle: clean:%ld, dirty:%ld\n",Num_evict_clean_cycle,Num_evict_dirty_cycle);
 
         Num_evict_dirty_cycle = 0;
         Cycle_Progress = 0;
@@ -339,40 +337,29 @@ FLAG_EVICT_DIRTYZONE:
 
 static EvictPhrase_t run_cm_alpha()
 {
-    CycleID++;
     if(STT->incache_n_dirty == 0 || STT->incache_n_clean == 0)
         usr_error("Illegal to run CostModel:alpha");
-    struct blk_cm_info blk_cm_info_drt={0,0}, blk_cm_info_cln={0,0};
-    double cost_drt = -1, cost_cln = -1;
 
     /* Get number of dirty OODs. NOTICE! Have to get the dirty first and then the clean, the order cannot be reverted.*/
-    cost_drt = redefineOpenZones();
+    int zoneid;
+    if((zoneid = get_FrozenOpZone_Seq()) < 0)
+        redefineOpenZones();
+    
+    ZoneCtrl_pual* evictZone = ZoneCtrl_pualArray + OpenZoneSet[zoneid];
+    Dscptr_paul* frozenDesp = GlobalDespArray + evictZone->tail;
+    unsigned long stamp_dirty = frozenDesp->stamp;
 
     /* Get number of clean OODs. NOTICE! Have to get the dirty first and then the clean, the order cannot be reverted. */
-    blkcnt_t despId_cln = CleanCtrl.tail;
-    Dscptr_paul* cleandesp;
-    int cnt = 0;
-    while(cnt < NumEvict_thistime_apprx && despId_cln >= 0)
-    {
-        cleandesp = GlobalDespArray + despId_cln;
-        if(cleandesp->stamp < OODstamp){
-            blk_cm_info_cln.num_OODblks ++;
-        }
-        despId_cln = cleandesp->pre;
-        cnt ++;
-    }
-    blk_cm_info_cln.num_totalblks = cnt;
+    Dscptr_paul* cleandesp = GlobalDespArray + CleanCtrl.tail;
+    unsigned long stamp_clean = cleandesp->stamp;
 
-    cost_cln = CM_Alpha.Cost_Clean(blk_cm_info_cln);
 
-    printf(">>>[NEWCYCLE] CostModel(Alpha) C:%1f vs. D:%1f<<<\n", cost_cln, cost_drt);
+    printf(">>>[NEWCYCLE] timestamp C:%lu vs. D:%lu<<<\n", stamp_clean, stamp_dirty);
     printf(">>>[NEWCYCLE] Cached Number C:%lu vs. D:%lu<<<\n", STT->incache_n_clean, STT->incache_n_dirty);
 
     /* Compare. */
-    if(cost_drt == -1 && cost_cln == -1)
-        usr_error("paul.c: alpha costmodel found the cost og dirty and clean are both -1");
 
-    if(cost_cln < cost_drt){
+    if(stamp_clean < stamp_dirty){
         printf("~CLEAN\n\n");
         return EP_Clean;
     }
@@ -615,10 +602,9 @@ static double redefineOpenZones()
         else if(zone->activate_after_n_cycles > 0)
             //info("PAUL FILTERS A REPEAT ZONE.");
         i++;
-	printf("evict zoneid=%d, ood=%d\n",zone->zoneId,zone->OOD_num);
     }
 
-    cost_ret = CM_Alpha.Cost_Dirty(cm_drt, OpenZoneCnt);
+//    cost_ret = CM_Alpha.Cost_Dirty(cm_drt, OpenZoneCnt);
     return cost_ret;
 }
 
