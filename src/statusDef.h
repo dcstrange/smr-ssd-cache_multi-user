@@ -3,7 +3,11 @@
  * All the switch is turn-off by default.
  */
 /** configure of system structure **/
+<<<<<<< HEAD
 #define  NO_REAL_DISK_IO
+=======
+#define NO_REAL_DISK_IO
+>>>>>>> 50ada24be71a2f5e3e3bbbfade37fbfcce82ced3
 
 #undef NO_CACHE
 
@@ -18,7 +22,7 @@
 
 
 /** Emulator Related **/
-#undef SIMULATION
+#define SIMULATION
 #undef SIMULATOR_AIO
 #define SIMU_NO_DISK_IO
 

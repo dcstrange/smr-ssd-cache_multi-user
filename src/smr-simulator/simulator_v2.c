@@ -370,7 +370,7 @@ flushFIFO()
         long nextPos = (curDesp->despId + 1) % (NBLOCK_SMR_FIFO + 1);
 
         /* If the block belongs the same band with the header of fifo. */
-        if (curDesp->isValid && (curDesp->tag.offset - thisBandOff) <= thisBandSize) 
+        if (curDesp->isValid && (curDesp->tag.offset - thisBandOff) < thisBandSize && curDesp->tag.offset >= thisBandOff) 
         {
             off_t offset_inband = curDesp->tag.offset - thisBandOff;
 #ifdef SIMULATOR_AIO
@@ -455,6 +455,7 @@ flushFIFO()
     char log[256];
     sprintf(log,"%f\n", wtrAmp);
     _Log(log, log_wa);
+    printf("SMIU: band-colect=%d, bandsize=%d\n", dirty_n_inBand,thisBandSize/4096);
 }
 
 static unsigned long
