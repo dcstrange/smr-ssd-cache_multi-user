@@ -3,7 +3,8 @@
  * All the switch is turn-off by default.
  */
 /** configure of system structure **/
-#undef NO_REAL_DISK_IO
+
+#define NO_REAL_DISK_IO
 
 #undef NO_CACHE
 
@@ -12,13 +13,13 @@
 
 /** Log reporting level **/
 
-#define LOG_ALLOW // Log allowed EXCLUSIVELY for 1. Print the pcb by CM. 2. Print the WA by Emulator.
-#undef  LOG_SINGLE_REQ // LEGACY: Print detail time information of each single request.
+#undef LOG_ALLOW // Log allowed EXCLUSIVELY for 1. Print the pcb by CM. 2. Print the WA by Emulator.
+#undef LOG_SINGLE_REQ // LEGACY: Print detail time information of each single request.
 #undef LOG_IO_LAT // report each io latency. 
 
 
 /** Emulator Related **/
-#undef SIMULATION
+#define SIMULATION
 #undef SIMULATOR_AIO
 #define SIMU_NO_DISK_IO
 
