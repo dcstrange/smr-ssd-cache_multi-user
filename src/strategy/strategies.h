@@ -7,7 +7,7 @@
 #include "pore.h"
 #include "paul.h"
 
-#include "oldpore.h"
+//#include "oldpore.h"
 //#include "pv3.h"
 #include "lru_rw.h"
 #include "costmodel.h"

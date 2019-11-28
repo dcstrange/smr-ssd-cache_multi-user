@@ -16,3 +16,6 @@
 *.swp
 *.tmp
 *.bak
+
+# sh file 
+*.sh

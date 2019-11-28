@@ -25,8 +25,9 @@ blksize_t NBLOCK_SMR_FIFO;
 blksize_t NBANDTables = 2621952;
 blksize_t SSD_SIZE = 4096;
 blksize_t BLKSZ = 4096;
-blkcnt_t  NZONES = 466034;/* size = 8TB */ //194180;    // NZONES * ZONESZ =
-blksize_t ZONESZ = 5000*4096;//20MB    // Unit: Byte.
+
+blkcnt_t  NZONES = 400000;/* size = 8TB */ //194180;    // NZONES * ZONESZ =
+blksize_t ZONESZ = 5000 * 4096;//20MB    // Unit: Byte.
 
 char simu_smr_fifo_device[] = "/mnt/smr/pb";
 char simu_smr_smr_device[] = "/mnt/smr/smr";
